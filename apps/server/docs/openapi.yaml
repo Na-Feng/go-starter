@@ -1,0 +1,66 @@
+openapi: 3.0.3
+info:
+  title: Go Starter API
+  version: 1.0.0
+  description: 可复用 Go 后台开发基座接口文档（含 RBAC、审计日志、图片压缩上传、大文件分片上传与异步任务）
+servers:
+  - url: http://localhost:8080
+    description: 本地开发环境
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+paths:
+  /healthz:
+    get:
+      summary: 存活探针
+      responses: { "200": { description: OK } }
+  /readyz:
+    get:
+      summary: 就绪探针
+      responses: { "200": { description: Ready } }
+  /api/v1/auth/login:
+    post:
+      summary: 账号密码登录
+      responses: { "200": { description: TokenPair } }
+  /api/v1/auth/logout:
+    post:
+      summary: 退出登录（吊销当前 Token）
+      security: [{ BearerAuth: [] }]
+      responses: { "200": { description: Logged out } }
+  /api/v1/auth/me:
+    get:
+      summary: 获取当前用户信息与权限列表
+      security: [{ BearerAuth: [] }]
+      responses: { "200": { description: Profile } }
+  /api/v1/auth/change-password:
+    post:
+      summary: 修改当前用户密码
+      security: [{ BearerAuth: [] }]
+      responses: { "200": { description: Updated } }
+  /api/v1/files/upload:
+    post:
+      summary: 小文件直传（图片自动安全校验并等比压缩）
+      security: [{ BearerAuth: [] }]
+      responses: { "201": { description: FileInfo } }
+  /api/v1/files/multipart/init:
+    post:
+      summary: 初始化大文件分片上传
+      security: [{ BearerAuth: [] }]
+      responses: { "201": { description: UploadSession } }
+  /api/v1/files/multipart/{upload_id}/chunks/{index}:
+    put:
+      summary: 上传单个分片（二进制流，支持断点重传）
+      security: [{ BearerAuth: [] }]
+      responses: { "200": { description: ChunkAccepted } }
+  /api/v1/files/multipart/{upload_id}/complete:
+    post:
+      summary: 合并分片并校验 SHA256
+      security: [{ BearerAuth: [] }]
+      responses: { "201": { description: FileInfo } }
+  /api/v1/files/{key}:
+    get:
+      summary: 下载/播放文件（支持 HTTP Range 拖动）
+      responses: { "200": { description: BinaryStream } }

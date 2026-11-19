@@ -1,0 +1,42 @@
+{
+  "name": "web-starter",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "gen:api": "openapi-typescript ../server/docs/openapi.yaml -o src/api/schema.d.ts",
+    "lint:biome": "biome check .",
+    "lint:rules": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm lint:biome && pnpm lint:rules && pnpm typecheck && pnpm test"
+  },
+  "dependencies": {
+    "@arco-design/web-react": "^2.66.0",
+    "@tanstack/react-query": "^5.60.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.0.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@tanstack/eslint-plugin-query": "^5.60.0",
+    "@testing-library/react": "^16.0.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.12",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.15.0",
+    "jsdom": "^25.0.1",
+    "openapi-typescript": "^7.4.2",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.15.0",
+    "vitest": "^2.1.5"
+  }
+}

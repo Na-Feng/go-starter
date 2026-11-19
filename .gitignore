@@ -1,0 +1,18 @@
+# Dependencies & build outputs
+node_modules/
+dist/
+/apps/server/bin/
+/apps/server/uploads/
+
+# Environment & temp files
+.env
+.env.local
+/.tmp/
+playwright-report/
+test-results/
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

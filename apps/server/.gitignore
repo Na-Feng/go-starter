@@ -1,0 +1,22 @@
+# Binaries & build artifacts
+/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Environment & local runtime data
+.env
+.env.local
+/uploads/
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# AI scratchpad & temp scripts
+/.tmp/
