@@ -1,4 +1,4 @@
-import type { Envelope, TokenPair } from '@/api/schema';
+import type { ApiEndpoint, Envelope, TokenPair } from '@/api/schema';
 
 const ACCESS_KEY = 'gs_access_token';
 const REFRESH_KEY = 'gs_refresh_token';
@@ -28,7 +28,10 @@ export const tokenStore = {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiRequest<T>(
+  path: ApiEndpoint,
+  init: RequestInit = {},
+): Promise<T> {
   const headers = new Headers(init.headers);
   const token = tokenStore.getAccess();
   if (token) {
@@ -45,7 +48,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     if (res.status === 401) {
       tokenStore.clear();
     }
-    throw new ApiError(json.code ?? res.status, json.message ?? '请求失败', res.status);
+    throw new ApiError(
+      json.code ?? res.status,
+      json.message ?? '请求失败',
+      res.status,
+    );
   }
   return json.data;
 }

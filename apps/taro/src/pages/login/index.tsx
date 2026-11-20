@@ -1,7 +1,7 @@
 import type { TokenPair } from '@/api/schema';
 import { apiRequest, tokenStorage } from '@/lib/request';
-import { Button, Input, Text, View } from '@tarojs/components';
 import { useMutation } from '@tanstack/react-query';
+import { Button, Input, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useState } from 'react';
 
@@ -24,26 +24,47 @@ export default function LoginPage() {
 
   return (
     <View style={{ padding: '24px' }}>
-      <Text style={{ fontSize: '18px', fontWeight: 'bold', display: 'block', marginBottom: '16px' }}>
+      <Text
+        style={{
+          fontSize: '18px',
+          fontWeight: 'bold',
+          display: 'block',
+          marginBottom: '16px',
+        }}
+      >
         账号登录
       </Text>
       <Input
         value={username}
         onInput={(e) => setUsername(e.detail.value)}
         placeholder="用户名"
-        style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '12px' }}
+        style={{
+          border: '1px solid #ddd',
+          padding: '10px',
+          marginBottom: '12px',
+        }}
       />
       <Input
         password
         value={password}
         onInput={(e) => setPassword(e.detail.value)}
         placeholder="密码"
-        style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '16px' }}
+        style={{
+          border: '1px solid #ddd',
+          padding: '10px',
+          marginBottom: '16px',
+        }}
       />
       {loginMut.error ? (
-        <Text style={{ color: 'red', display: 'block', marginBottom: '12px' }}>{loginMut.error.message}</Text>
+        <Text style={{ color: 'red', display: 'block', marginBottom: '12px' }}>
+          {loginMut.error.message}
+        </Text>
       ) : null}
-      <Button type="primary" loading={loginMut.isPending} onClick={() => loginMut.mutate()}>
+      <Button
+        type="primary"
+        loading={loginMut.isPending}
+        onClick={() => loginMut.mutate()}
+      >
         登录
       </Button>
     </View>

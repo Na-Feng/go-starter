@@ -149,7 +149,7 @@ func (m *memIAMRepo) ReplaceUserRoles(_ context.Context, userID string, roleIDs 
 	return nil
 }
 
-func (m *memIAMRepo) ListRoles(_ context.Context) ([]iam.Role, error)       { return nil, nil }
+func (m *memIAMRepo) ListRoles(_ context.Context) ([]iam.Role, error) { return nil, nil }
 func (m *memIAMRepo) CreateRole(_ context.Context, c, n string) (iam.Role, error) {
 	return iam.Role{Code: c, Name: n}, nil
 }

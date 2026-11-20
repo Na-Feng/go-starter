@@ -1,4 +1,4 @@
-import type { MeResp, TokenPair } from '@/api/schema';
+import type { MeResp, PermissionCode, TokenPair } from '@/api/schema';
 import { apiRequest, tokenStore } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -50,10 +50,21 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export function Can({ perm, children }: { perm: string; children: ReactNode }) {
+export function hasPermission(
+  roles: readonly string[],
+  permissions: readonly string[],
+  perm: PermissionCode,
+): boolean {
+  return roles.includes('super_admin') || permissions.includes(perm);
+}
+
+export function Can({
+  perm,
+  children,
+}: { perm: PermissionCode; children: ReactNode }) {
   const { data } = useMe();
   if (!data) return null;
-  if (data.roles.includes('super_admin') || data.permissions.includes(perm)) {
+  if (hasPermission(data.roles, data.permissions, perm)) {
     return <>{children}</>;
   }
   return null;

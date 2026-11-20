@@ -1,8 +1,8 @@
 import type { PageResult, SampleItem } from '@/api/schema';
 import { validateSampleTitle } from '@/core/sample';
 import { apiRequest } from '@/lib/request';
-import { Button, Input, Text, View } from '@tarojs/components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button, Input, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { useState } from 'react';
 
@@ -12,7 +12,8 @@ export default function SampleSubpackagePage() {
 
   const listQuery = useQuery({
     queryKey: ['samples', 1],
-    queryFn: () => apiRequest<PageResult<SampleItem>>('/api/v1/samples?page=1&page_size=20'),
+    queryFn: () =>
+      apiRequest<PageResult<SampleItem>>('/api/v1/samples?page=1&page_size=20'),
   });
 
   useDidShow(() => {
@@ -47,16 +48,31 @@ export default function SampleSubpackagePage() {
           value={title}
           onInput={(e) => setTitle(e.detail.value)}
           placeholder="输入示例标题..."
-          style={{ flex: 1, border: '1px solid #ddd', padding: '8px', marginRight: '8px' }}
+          style={{
+            flex: 1,
+            border: '1px solid #ddd',
+            padding: '8px',
+            marginRight: '8px',
+          }}
         />
-        <Button type="primary" size="mini" loading={createMut.isPending} onClick={handleSubmit}>
+        <Button
+          type="primary"
+          size="mini"
+          loading={createMut.isPending}
+          onClick={handleSubmit}
+        >
           新增
         </Button>
       </View>
 
       {listQuery.data?.items.map((item) => (
-        <View key={item.id} style={{ padding: '12px', borderBottom: '1px solid #eee' }}>
-          <Text style={{ display: 'block', fontWeight: 'bold' }}>{item.title}</Text>
+        <View
+          key={item.id}
+          style={{ padding: '12px', borderBottom: '1px solid #eee' }}
+        >
+          <Text style={{ display: 'block', fontWeight: 'bold' }}>
+            {item.title}
+          </Text>
           <Text style={{ fontSize: '12px', color: '#888' }}>{item.id}</Text>
         </View>
       ))}

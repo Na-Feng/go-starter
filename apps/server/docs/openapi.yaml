@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Go Starter API
   version: 1.0.0
-  description: 可复用 Go 后台开发基座接口文档（含 RBAC、审计日志、图片压缩上传、大文件分片上传与异步任务）
+  description: 可复用 Go 全栈基座接口契约（RBAC、审计日志、示例业务、图片压缩与大文件分片上传）
 servers:
   - url: http://localhost:8080
     description: 本地开发环境
@@ -12,55 +12,556 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: page_size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  schemas:
+    UserStatus:
+      type: string
+      enum: [active, disabled]
+    PermissionCode:
+      type: string
+      enum:
+        - iam:user:read
+        - iam:user:write
+        - iam:role:read
+        - iam:role:write
+        - iam:audit:read
+        - sample:write
+    TokenPair:
+      type: object
+      required: [access_token, refresh_token, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          format: int64
+    User:
+      type: object
+      required: [id, username, nickname, status, created_at]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        nickname:
+          type: string
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        roles:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+    Role:
+      type: object
+      required: [id, code, name, created_at]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+    Permission:
+      type: object
+      required: [id, code, name]
+      properties:
+        id:
+          type: string
+        code:
+          $ref: '#/components/schemas/PermissionCode'
+        name:
+          type: string
+    MeResp:
+      type: object
+      required: [user, roles, permissions]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        roles:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionCode'
+    SampleItem:
+      type: object
+      required: [id, title, created_at]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    AuditEntry:
+      type: object
+      required: [id, actor_id, action, target_type, target_id, ip, created_at]
+      properties:
+        id:
+          type: string
+        actor_id:
+          type: string
+        action:
+          type: string
+        target_type:
+          type: string
+        target_id:
+          type: string
+        detail:
+          type: object
+          additionalProperties: true
+        ip:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    FileInfo:
+      type: object
+      required: [key, filename, size, url]
+      properties:
+        key:
+          type: string
+        filename:
+          type: string
+        size:
+          type: integer
+          format: int64
+        url:
+          type: string
+    MultipartSession:
+      type: object
+      required: [upload_id, filename, total_size, total_chunks]
+      properties:
+        upload_id:
+          type: string
+        filename:
+          type: string
+        total_size:
+          type: integer
+          format: int64
+        total_chunks:
+          type: integer
+        sha256:
+          type: string
+    LoginReq:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 2
+          maxLength: 64
+        password:
+          type: string
+          minLength: 6
+          maxLength: 128
+    RefreshReq:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    ChangePasswordReq:
+      type: object
+      required: [old_password, new_password]
+      properties:
+        old_password:
+          type: string
+        new_password:
+          type: string
+          minLength: 6
+          maxLength: 128
+    CreateUserReq:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 2
+          maxLength: 64
+        password:
+          type: string
+          minLength: 6
+          maxLength: 128
+        nickname:
+          type: string
+          maxLength: 64
+        role_ids:
+          type: array
+          items:
+            type: string
+    UpdateUserStatusReq:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/UserStatus'
+    AssignUserRolesReq:
+      type: object
+      required: [role_ids]
+      properties:
+        role_ids:
+          type: array
+          items:
+            type: string
+    CreateRoleReq:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          type: string
+          minLength: 2
+          maxLength: 64
+        name:
+          type: string
+          minLength: 2
+          maxLength: 64
+    AssignRolePermsReq:
+      type: object
+      required: [permission_ids]
+      properties:
+        permission_ids:
+          type: array
+          items:
+            type: string
+    CreateSampleReq:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 2
+          maxLength: 100
+    InitMultipartReq:
+      type: object
+      required: [filename, total_size, total_chunks]
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+        total_size:
+          type: integer
+          format: int64
+          minimum: 1
+        total_chunks:
+          type: integer
+          minimum: 1
+        sha256:
+          type: string
+          minLength: 64
+          maxLength: 64
 paths:
   /healthz:
     get:
       summary: 存活探针
-      responses: { "200": { description: OK } }
+      responses:
+        '200':
+          description: OK
   /readyz:
     get:
       summary: 就绪探针
-      responses: { "200": { description: Ready } }
+      responses:
+        '200':
+          description: Ready
   /api/v1/auth/login:
     post:
       summary: 账号密码登录
-      responses: { "200": { description: TokenPair } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginReq'
+      responses:
+        '200':
+          description: TokenPair
+  /api/v1/auth/refresh:
+    post:
+      summary: 刷新访问令牌
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshReq'
+      responses:
+        '200':
+          description: TokenPair
   /api/v1/auth/logout:
     post:
       summary: 退出登录（吊销当前 Token）
       security: [{ BearerAuth: [] }]
-      responses: { "200": { description: Logged out } }
+      responses:
+        '200':
+          description: Logged out
   /api/v1/auth/me:
     get:
       summary: 获取当前用户信息与权限列表
       security: [{ BearerAuth: [] }]
-      responses: { "200": { description: Profile } }
+      responses:
+        '200':
+          description: MeResp
   /api/v1/auth/change-password:
     post:
       summary: 修改当前用户密码
       security: [{ BearerAuth: [] }]
-      responses: { "200": { description: Updated } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordReq'
+      responses:
+        '200':
+          description: PasswordUpdated
+  /api/v1/iam/users:
+    get:
+      summary: 分页查询用户列表（需 iam:user:read）
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: PageResult<User>
+    post:
+      summary: 创建新用户（需 iam:user:write）
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserReq'
+      responses:
+        '201':
+          description: User
+  /api/v1/iam/users/{id}/status:
+    patch:
+      summary: 启用或禁用用户状态（需 iam:user:write）
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusReq'
+      responses:
+        '200':
+          description: StatusUpdated
+  /api/v1/iam/users/{id}/roles:
+    put:
+      summary: 分配用户角色（需 iam:user:write）
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignUserRolesReq'
+      responses:
+        '200':
+          description: RolesAssigned
+  /api/v1/iam/roles:
+    get:
+      summary: 查询角色列表（需 iam:role:read）
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: RoleList
+    post:
+      summary: 创建角色（需 iam:role:write）
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleReq'
+      responses:
+        '201':
+          description: Role
+  /api/v1/iam/roles/{id}/permissions:
+    put:
+      summary: 配置角色权限（需 iam:role:write）
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRolePermsReq'
+      responses:
+        '200':
+          description: PermissionsAssigned
+  /api/v1/iam/permissions:
+    get:
+      summary: 查询全部权限码（需 iam:role:read）
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: PermissionList
+  /api/v1/iam/audit-logs:
+    get:
+      summary: 分页查询操作审计日志（需 iam:audit:read）
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: PageResult<AuditEntry>
+  /api/v1/samples:
+    get:
+      summary: 分页查询示例条目
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: PageResult<SampleItem>
+    post:
+      summary: 新增示例条目（需 sample:write）
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSampleReq'
+      responses:
+        '201':
+          description: SampleItem
+  /api/v1/samples/{id}:
+    get:
+      summary: 查询单条示例详情
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SampleItem
+  /api/v1/samples/export:
+    post:
+      summary: 异步导出示例数据
+      security: [{ BearerAuth: [] }]
+      responses:
+        '202':
+          description: ExportAccepted
   /api/v1/files/upload:
     post:
       summary: 小文件直传（图片自动安全校验并等比压缩）
       security: [{ BearerAuth: [] }]
-      responses: { "201": { description: FileInfo } }
+      responses:
+        '201':
+          description: FileInfo
   /api/v1/files/multipart/init:
     post:
       summary: 初始化大文件分片上传
       security: [{ BearerAuth: [] }]
-      responses: { "201": { description: UploadSession } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitMultipartReq'
+      responses:
+        '201':
+          description: MultipartSession
   /api/v1/files/multipart/{upload_id}/chunks/{index}:
     put:
       summary: 上传单个分片（二进制流，支持断点重传）
       security: [{ BearerAuth: [] }]
-      responses: { "200": { description: ChunkAccepted } }
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ChunkAccepted
   /api/v1/files/multipart/{upload_id}/complete:
     post:
       summary: 合并分片并校验 SHA256
       security: [{ BearerAuth: [] }]
-      responses: { "201": { description: FileInfo } }
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: FileInfo
   /api/v1/files/{key}:
     get:
-      summary: 下载/播放文件（支持 HTTP Range 拖动）
-      responses: { "200": { description: BinaryStream } }
+      summary: 下载或流式播放文件（支持 HTTP Range）
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: BinaryStream

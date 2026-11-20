@@ -10,7 +10,7 @@ import (
 func FuzzOpenSeekerPathTraversal(f *testing.F) {
 	f.Add("abc.jpg")
 	f.Add("../etc/passwd")
-	f.Add("..\..\windows\win.ini")
+	f.Add(`..\..\windows\win.ini`)
 	f.Add("")
 	f.Add(".")
 	f.Add("..")

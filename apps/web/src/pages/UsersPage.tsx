@@ -9,11 +9,15 @@ export function UsersPage() {
   const qc = useQueryClient();
   const usersQuery = useQuery({
     queryKey: ['iam', 'users'],
-    queryFn: () => apiRequest<PageResult<User>>('/api/v1/iam/users?page=1&page_size=20'),
+    queryFn: () =>
+      apiRequest<PageResult<User>>('/api/v1/iam/users?page=1&page_size=20'),
   });
 
   const toggleStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'active' | 'disabled' }) =>
+    mutationFn: ({
+      id,
+      status,
+    }: { id: string; status: 'active' | 'disabled' }) =>
       apiRequest(`/api/v1/iam/users/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),
@@ -42,7 +46,10 @@ export function UsersPage() {
           <Switch
             checked={record.status === 'active'}
             onChange={(checked) =>
-              toggleStatus.mutate({ id: record.id, status: checked ? 'active' : 'disabled' })
+              toggleStatus.mutate({
+                id: record.id,
+                status: checked ? 'active' : 'disabled',
+              })
             }
           />
         </Can>

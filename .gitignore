@@ -1,6 +1,7 @@
 # Dependencies & build outputs
 node_modules/
 dist/
+*.tsbuildinfo
 /apps/server/bin/
 /apps/server/uploads/
 

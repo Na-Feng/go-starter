@@ -1,4 +1,4 @@
-import type { Envelope, TokenPair } from '@/api/schema';
+import type { ApiEndpoint, Envelope, TokenPair } from '@/api/schema';
 import Taro from '@tarojs/taro';
 
 const ACCESS_KEY = 'gs_access_token';
@@ -28,8 +28,11 @@ export const tokenStorage = {
 };
 
 export async function apiRequest<T>(
-  path: string,
-  options: { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; data?: object } = {},
+  path: ApiEndpoint,
+  options: {
+    method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+    data?: object;
+  } = {},
 ): Promise<T> {
   const token = tokenStorage.getAccess();
   const header: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -52,7 +55,11 @@ export async function apiRequest<T>(
   }
 
   if (res.statusCode < 200 || res.statusCode >= 300 || res.data.code !== 0) {
-    throw new ApiError(res.data?.code ?? res.statusCode, res.data?.message ?? '请求失败', res.statusCode);
+    throw new ApiError(
+      res.data?.code ?? res.statusCode,
+      res.data?.message ?? '请求失败',
+      res.statusCode,
+    );
   }
   return res.data.data;
 }

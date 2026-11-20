@@ -1,5 +1,5 @@
-import { defineConfig } from '@tarojs/cli';
 import path from 'node:path';
+import { defineConfig } from '@tarojs/cli';
 
 export default defineConfig({
   projectName: 'taro-starter',

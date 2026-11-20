@@ -1,7 +1,16 @@
 import type { PageResult, SampleItem } from '@/api/schema';
 import { apiRequest } from '@/lib/api';
 import { Can } from '@/lib/auth';
-import { Button, Card, Form, Input, Message, Space, Table, Upload } from '@arco-design/web-react';
+import {
+  Button,
+  Card,
+  Form,
+  Input,
+  Message,
+  Space,
+  Table,
+  Upload,
+} from '@arco-design/web-react';
 import type { ColumnProps } from '@arco-design/web-react/es/Table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -19,7 +28,10 @@ export function SamplesPage() {
 
   const listQuery = useQuery({
     queryKey: ['samples', page],
-    queryFn: () => apiRequest<PageResult<SampleItem>>(`/api/v1/samples?page=${page}&page_size=10`),
+    queryFn: () =>
+      apiRequest<PageResult<SampleItem>>(
+        `/api/v1/samples?page=${page}&page_size=10`,
+      ),
   });
 
   const createMut = useMutation({
@@ -47,10 +59,13 @@ export function SamplesPage() {
               const fd = new FormData();
               fd.append('file', option.file);
               try {
-                const res = await apiRequest<{ url: string }>('/api/v1/files/upload', {
-                  method: 'POST',
-                  body: fd,
-                });
+                const res = await apiRequest<{ url: string }>(
+                  '/api/v1/files/upload',
+                  {
+                    method: 'POST',
+                    body: fd,
+                  },
+                );
                 Message.success(`上传成功：${res.url}`);
                 option.onSuccess(res);
               } catch (err) {
@@ -68,11 +83,18 @@ export function SamplesPage() {
                 if (values.title?.trim()) createMut.mutate(values.title.trim());
               }}
             >
-              <Form.Item field="title" rules={[{ required: true, message: '请输入标题' }]}>
+              <Form.Item
+                field="title"
+                rules={[{ required: true, message: '请输入标题' }]}
+              >
                 <Input placeholder="输入标题..." />
               </Form.Item>
               <Form.Item>
-                <Button type="primary" htmlType="submit" loading={createMut.isPending}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={createMut.isPending}
+                >
                   新增
                 </Button>
               </Form.Item>

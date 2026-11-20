@@ -1,4 +1,4 @@
-.PHONY: help up down gen-api check-all check-server check-web check-taro test-int dev-server dev-web dev-taro
+.PHONY: help up down gen-api check-contract check-all check-server check-web check-taro test-int dev-server dev-web dev-taro
 
 help: ## 显示全栈 Monorepo 可用命令
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -12,6 +12,10 @@ down: ## 停止本地依赖容器
 gen-api: ## 从 Go OpenAPI 契约一键同步 Web 与 Taro 的 TypeScript 类型
 	pnpm --filter web-starter gen:api
 	pnpm --filter taro-starter gen:api
+
+check-contract: ## 校验双端 OpenAPI 生成类型与后端契约零漂移
+	pnpm --filter web-starter check:api
+	pnpm --filter taro-starter check:api
 
 check-server: ## 运行 Go 后端内循环检查
 	$(MAKE) -C apps/server check

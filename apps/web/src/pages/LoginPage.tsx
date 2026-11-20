@@ -1,5 +1,12 @@
 import { useLogin } from '@/lib/auth';
-import { Button, Card, Form, Input, Message, Typography } from '@arco-design/web-react';
+import {
+  Button,
+  Card,
+  Form,
+  Input,
+  Message,
+  Typography,
+} from '@arco-design/web-react';
 import { useNavigate } from 'react-router-dom';
 
 export function LoginPage() {
@@ -29,14 +36,27 @@ export function LoginPage() {
           initialValues={{ username: 'admin', password: 'admin123' }}
           onSubmit={handleSubmit}
         >
-          <Form.Item label="用户名" field="username" rules={[{ required: true, message: '请输入用户名' }]}>
+          <Form.Item
+            label="用户名"
+            field="username"
+            rules={[{ required: true, message: '请输入用户名' }]}
+          >
             <Input placeholder="请输入用户名" />
           </Form.Item>
-          <Form.Item label="密码" field="password" rules={[{ required: true, message: '请输入密码' }]}>
+          <Form.Item
+            label="密码"
+            field="password"
+            rules={[{ required: true, message: '请输入密码' }]}
+          >
             <Input.Password placeholder="请输入密码" />
           </Form.Item>
           <Form.Item className="mb-0">
-            <Button type="primary" htmlType="submit" long loading={login.isPending}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              long
+              loading={login.isPending}
+            >
               登录
             </Button>
           </Form.Item>

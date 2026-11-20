@@ -1,10 +1,18 @@
+import { WEB_MENU_FEATURES } from '@/feature-map';
 import { RequireAuth, useLogout, useMe } from '@/lib/auth';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { SamplesPage } from '@/pages/SamplesPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { Button, Layout, Menu, Space } from '@arco-design/web-react';
-import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 
 function AdminLayout() {
   const { data } = useMe();
@@ -14,22 +22,37 @@ function AdminLayout() {
 
   return (
     <Layout className="min-h-screen">
-      <Layout.Sider width={210} theme="light" className="border-r border-slate-200">
-        <div className="px-5 py-4 text-base font-semibold text-slate-900">Go Starter Admin</div>
-        <Menu selectedKeys={[location.pathname]} onClickMenuItem={(key) => navigate(key)}>
-          <Menu.Item key="/samples">示例业务</Menu.Item>
-          <Menu.Item key="/iam/users">用户管理</Menu.Item>
-          <Menu.Item key="/iam/audit-logs">审计日志</Menu.Item>
+      <Layout.Sider
+        width={210}
+        theme="light"
+        className="border-r border-slate-200"
+      >
+        <div className="px-5 py-4 text-base font-semibold text-slate-900">
+          Go Starter Admin
+        </div>
+        <Menu
+          selectedKeys={[location.pathname]}
+          onClickMenuItem={(key) => navigate(key)}
+        >
+          {WEB_MENU_FEATURES.map((item) => (
+            <Menu.Item key={item.route}>{item.menuLabel}</Menu.Item>
+          ))}
         </Menu>
       </Layout.Sider>
       <Layout>
         <Layout.Header className="flex items-center justify-end border-b border-slate-200 bg-white px-6 py-3">
           <Space>
-            <span className="text-xs text-slate-500">当前用户：{data?.user.username}</span>
+            <span className="text-xs text-slate-500">
+              当前用户：{data?.user.username}
+            </span>
             <Button
               type="text"
               size="small"
-              onClick={() => logout.mutate(undefined, { onSettled: () => navigate('/login') })}
+              onClick={() =>
+                logout.mutate(undefined, {
+                  onSettled: () => navigate('/login'),
+                })
+              }
             >
               退出登录
             </Button>

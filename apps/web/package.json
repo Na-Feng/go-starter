@@ -7,12 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "gen:api": "openapi-typescript ../server/docs/openapi.yaml -o src/api/schema.d.ts",
+    "gen:api": "openapi-typescript ../server/docs/openapi.yaml -o src/api/openapi.gen.d.ts && biome format --write src/api/openapi.gen.d.ts",
+    "check:api": "mkdir -p ../../.tmp && openapi-typescript ../server/docs/openapi.yaml -o ../../.tmp/web-openapi.gen.d.ts && biome format --write ../../.tmp/web-openapi.gen.d.ts && diff -u src/api/openapi.gen.d.ts ../../.tmp/web-openapi.gen.d.ts",
     "lint:biome": "biome check .",
     "lint:rules": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "pnpm lint:biome && pnpm lint:rules && pnpm typecheck && pnpm test"
+    "check": "pnpm check:api && pnpm lint:biome && pnpm lint:rules && pnpm typecheck && pnpm test"
   },
   "dependencies": {
     "@arco-design/web-react": "^2.66.0",
@@ -27,7 +28,7 @@
     "@tanstack/eslint-plugin-query": "^5.60.0",
     "@testing-library/react": "^16.0.1",
     "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.12",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.15.0",
@@ -37,6 +38,7 @@
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.15.0",
+    "vite": "^5.4.11",
     "vitest": "^2.1.5"
   }
 }

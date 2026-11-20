@@ -1,4 +1,15 @@
-// 运行 `pnpm gen:api` 将自动从 Go 后端 /openapi.yaml 覆盖生成最新类型
+import type { components, paths } from './openapi.gen';
+
+type PathTemplate<P extends string> =
+  P extends `${infer Head}/{${string}}${infer Tail}`
+    ? `${Head}/${string}${PathTemplate<Tail>}`
+    : P;
+
+export type ApiRoute = keyof paths & string;
+export type ApiEndpoint =
+  | PathTemplate<ApiRoute>
+  | `${PathTemplate<ApiRoute>}?${string}`;
+
 export interface Envelope<T> {
   code: number;
   message: string;
@@ -13,38 +24,16 @@ export interface PageResult<T> {
   page_size: number;
 }
 
-export interface TokenPair {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}
-
-export interface User {
-  id: string;
-  username: string;
-  nickname: string;
-  status: 'active' | 'disabled';
-  created_at: string;
-}
-
-export interface MeResp {
-  user: User;
-  roles: string[];
-  permissions: string[];
-}
-
-export interface SampleItem {
-  id: string;
-  title: string;
-  created_at: string;
-}
-
-export interface AuditEntry {
-  id: string;
-  actor_id: string;
-  action: string;
-  target_type: string;
-  target_id: string;
-  ip: string;
-  created_at: string;
-}
+export type UserStatus = components['schemas']['UserStatus'];
+export type PermissionCode = components['schemas']['PermissionCode'];
+export type TokenPair = components['schemas']['TokenPair'];
+export type User = components['schemas']['User'];
+export type Role = components['schemas']['Role'];
+export type Permission = components['schemas']['Permission'];
+export type MeResp = components['schemas']['MeResp'];
+export type SampleItem = components['schemas']['SampleItem'];
+export type AuditEntry = components['schemas']['AuditEntry'];
+export type FileInfo = components['schemas']['FileInfo'];
+export type MultipartSession = components['schemas']['MultipartSession'];
+export type LoginReq = components['schemas']['LoginReq'];
+export type CreateSampleReq = components['schemas']['CreateSampleReq'];

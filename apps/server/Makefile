@@ -41,8 +41,10 @@ vet: ## 静态检查
 lint: ## 运行 golangci-lint（需本地安装 golangci-lint）
 	golangci-lint run ./...
 
-check: fmt vet test ## 一键内循环验证（格式化 + 静态检查 + 竞态测试；若已装 golangci-lint 可接 lint）
-	@if command -v golangci-lint >/dev/null 2>&1; then golangci-lint run ./...; else echo "[hint] 未检测到 golangci-lint，已跳过额外 Lint 检查"; fi
+check: fmt vet ## 一键内循环验证（格式化 + go vet + 全包编译 + AST 架构/契约/竞态单测 + 可选 golangci-lint）
+	go build ./...
+	$(MAKE) test
+	@if command -v golangci-lint >/dev/null 2>&1; then golangci-lint run ./...; fi
 
 sqlc: ## 根据 db/queries 生成强类型 SQL 代码（需安装 sqlc）
 	sqlc generate

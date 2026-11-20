@@ -18,7 +18,10 @@ export function AuditLogsPage() {
   const [page, setPage] = useState(1);
   const query = useQuery({
     queryKey: ['iam', 'audit-logs', page],
-    queryFn: () => apiRequest<PageResult<AuditEntry>>(`/api/v1/iam/audit-logs?page=${page}&page_size=20`),
+    queryFn: () =>
+      apiRequest<PageResult<AuditEntry>>(
+        `/api/v1/iam/audit-logs?page=${page}&page_size=20`,
+      ),
   });
 
   return (

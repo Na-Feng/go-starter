@@ -1,4 +1,15 @@
-// 运行 `pnpm gen:api` 将自动从 Go 后端 /openapi.yaml 覆盖生成最新类型
+import type { components, paths } from './openapi.gen';
+
+type PathTemplate<P extends string> =
+  P extends `${infer Head}/{${string}}${infer Tail}`
+    ? `${Head}/${string}${PathTemplate<Tail>}`
+    : P;
+
+export type ApiRoute = keyof paths & string;
+export type ApiEndpoint =
+  | PathTemplate<ApiRoute>
+  | `${PathTemplate<ApiRoute>}?${string}`;
+
 export interface Envelope<T> {
   code: number;
   message: string;
@@ -13,14 +24,7 @@ export interface PageResult<T> {
   page_size: number;
 }
 
-export interface TokenPair {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}
-
-export interface SampleItem {
-  id: string;
-  title: string;
-  created_at: string;
-}
+export type TokenPair = components['schemas']['TokenPair'];
+export type SampleItem = components['schemas']['SampleItem'];
+export type LoginReq = components['schemas']['LoginReq'];
+export type CreateSampleReq = components['schemas']['CreateSampleReq'];
