@@ -3,7 +3,7 @@
 本应用与 Go 后端配套，采用 **TypeScript 严格模式 + OpenAPI 派生契约 + TanStack Query + 内联 ESLint `anti-slop` 硬约束 + 物化 Feature Map**。
 
 ## 1. 产物与依赖约束
-- 方案文档统一放仓库根目录 `docs/ai/YYYY-MM-DD-主题.md`，临时文件放 `.tmp/`；禁止随意引入新 npm 依赖。
+- 临时草稿放根 `.tmp/`，正式方案/决策统一按根 `AGENTS.md` 归入根 `docs/{specs,adr,postmortems,runbooks}/`；禁止随意引入新 npm 依赖。
 - 严禁使用 `any`、非空断言 `!` 以及 `eslint-disable` / `biome-ignore` / `@ts-ignore` 豁免注释（已由 Biome 与 ESLint 锁死）。
 
 ## 2. 架构与编码红线

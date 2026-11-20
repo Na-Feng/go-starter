@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -303,4 +304,134 @@ func extractModuleName(relPath string) string {
 		return ""
 	}
 	return parts[0]
+}
+
+var (
+	allowedEntryDocRe = regexp.MustCompile(`^(apps/[a-z0-9-]+/)?(README|AGENTS|CLAUDE)\.md$`)
+	adrDocRe          = regexp.MustCompile(`^docs/adr/\d{4}-[a-z0-9-]+\.md$`)
+	specDocRe         = regexp.MustCompile(`^docs/specs/\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$`)
+	postmortemDocRe   = regexp.MustCompile(`^docs/postmortems/\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$`)
+	runbookDocRe      = regexp.MustCompile(`^docs/runbooks/[a-z][a-z0-9-]*\.md$`)
+	frontmatterStatRe = regexp.MustCompile(`(?m)^status:\s*(draft|accepted|superseded)\s*$`)
+)
+
+func TestMarkdownDocsLayoutAndFrontmatterGuardrail(t *testing.T) {
+	repoRoot := filepath.Clean("../../..")
+	skipDirs := map[string]bool{
+		"node_modules": true,
+		"dist":         true,
+		"bin":          true,
+		"uploads":      true,
+		"vendor":       true,
+	}
+
+	var violations []string
+	err := filepath.WalkDir(repoRoot, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		name := d.Name()
+		if d.IsDir() {
+			if name != "." && name != ".." && (strings.HasPrefix(name, ".") || skipDirs[name]) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(name, ".md") {
+			return nil
+		}
+		rel, err := filepath.Rel(repoRoot, path)
+		if err != nil {
+			return err
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if msg := validateMarkdownDoc(filepath.ToSlash(rel), string(raw)); msg != "" {
+			violations = append(violations, msg)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan repo markdown docs: %v", err)
+	}
+	if len(violations) > 0 {
+		t.Errorf("全仓 Markdown 文档治理守卫拦截到 %d 处违规：\n  - %s",
+			len(violations), strings.Join(violations, "\n  - "))
+	}
+}
+
+func TestMarkdownGuardrailCatchesViolations(t *testing.T) {
+	validFM := "---\nstatus: accepted\nscope: fullstack\n---\n# Title\n"
+	cases := []struct {
+		relPath     string
+		content     string
+		expectClean bool
+		wantSubstr  string
+	}{
+		{relPath: "AGENTS.md", content: "# Root", expectClean: true},
+		{relPath: "apps/web/AGENTS.md", content: "# Web", expectClean: true},
+		{relPath: "docs/adr/0001-harness-hardening.md", content: validFM, expectClean: true},
+		{relPath: "docs/specs/2026-11-19-order-flow.md", content: validFM, expectClean: true},
+		{relPath: "docs/postmortems/2026-11-19-cache-bug.md", content: "# Postmortem", expectClean: true},
+		{relPath: "docs/runbooks/deploy-prod.md", content: "# Runbook", expectClean: true},
+		{
+			relPath:    "docs/ai/2026-11-19-note.md",
+			content:    validFM,
+			wantSubstr: "禁止新建未归口 .md 文件",
+		},
+		{
+			relPath:    "apps/server/SUMMARY.md",
+			content:    "# Summary",
+			wantSubstr: "禁止新建未归口 .md 文件",
+		},
+		{
+			relPath:    "docs/adr/0002-missing-status.md",
+			content:    "# No Frontmatter",
+			wantSubstr: "必须以 YAML Frontmatter 开头",
+		},
+		{
+			relPath:    "docs/runbooks/2026-11-19-dated-runbook.md",
+			content:    "# Runbook",
+			wantSubstr: "禁止新建未归口 .md 文件",
+		},
+	}
+
+	for _, tc := range cases {
+		msg := validateMarkdownDoc(tc.relPath, tc.content)
+		if tc.expectClean && msg != "" {
+			t.Fatalf("%s expected clean, got: %s", tc.relPath, msg)
+		}
+		if !tc.expectClean && !strings.Contains(msg, tc.wantSubstr) {
+			t.Fatalf("%s expected %q, got: %q", tc.relPath, tc.wantSubstr, msg)
+		}
+	}
+}
+
+func validateMarkdownDoc(relPath, content string) string {
+	if allowedEntryDocRe.MatchString(relPath) || postmortemDocRe.MatchString(relPath) || runbookDocRe.MatchString(relPath) {
+		return ""
+	}
+	if adrDocRe.MatchString(relPath) || specDocRe.MatchString(relPath) {
+		trimmed := strings.TrimLeft(content, "\ufeff")
+		if !strings.HasPrefix(trimmed, "---\n") {
+			return fmt.Sprintf(
+				"%s: specs/ 与 adr/ 文档必须以 YAML Frontmatter 开头并声明 status: draft|accepted|superseded",
+				relPath,
+			)
+		}
+		endIdx := strings.Index(trimmed[4:], "\n---")
+		if endIdx < 0 || !frontmatterStatRe.MatchString(trimmed[4:4+endIdx]) {
+			return fmt.Sprintf(
+				"%s: Frontmatter 缺少合法的 status 字段（可选值：draft | accepted | superseded）",
+				relPath,
+			)
+		}
+		return ""
+	}
+	return fmt.Sprintf(
+		"%s: 禁止新建未归口 .md 文件；临时草稿请放 .tmp/，正式文档请按用途放入 docs/specs/YYYY-MM-DD-<slug>.md、docs/adr/NNNN-<slug>.md、docs/postmortems/YYYY-MM-DD-<slug>.md 或 docs/runbooks/<slug>.md",
+		relPath,
+	)
 }

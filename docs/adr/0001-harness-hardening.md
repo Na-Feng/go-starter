@@ -1,7 +1,13 @@
-# 全栈基座信任倒金字塔加固方案（Harness Hardening）
+---
+status: accepted
+scope: fullstack
+updated: 2026-11-19
+---
+
+# ADR 0001：全栈基座信任倒金字塔加固方案（Harness Hardening）
 
 - **日期**：2026-11-19
-- **目标**：对齐《All Code Is Slop (Except Mine)》工程理念，修复初始仓库隐性断点，在不引入任何新增第三方测试/Lint 库的前提下，把“纸面约定”下沉为**代码库物理边界、编译器/AST 确定性检查、契约防漂移守卫、物化 Feature Map 与不变量属性测试**。
+- **目标**：对齐《All Code Is Slop (Except Mine)》工程理念，修复初始仓库隐性断点，在不引入任何新增第三方测试/Lint 库的前提下，把“纸面约定”下沉为**代码库物理边界、编译器/AST 确定性检查、契约防漂移守卫、文档目录治理、物化 Feature Map 与不变量属性测试**。
 
 ---
 
@@ -56,6 +62,7 @@
    - **Web / Taro（确定性种子 PRNG 属性测试）**：
      - 抽取纯权限判定逻辑与输入校验纯函数，执行百组以上随机属性测试验证空白裁剪幂等性、长度边界不变量与权限布尔代数性质。
 
-### 3. 顶层：极薄 `AGENTS.md` 对齐
+### 3. 顶层：极薄 `AGENTS.md` 对齐与文档生命周期治理
 
 - 修正根与子应用 `AGENTS.md` 中的失真描述（如 React 版本、契约生成文件名、Feature Map 入口与内循环命令），保持每份规范精简聚焦于人工判断边界。
+- 废弃分散的 `docs/ai/`，全仓文档按生命周期统一归口至根 `docs/{specs,adr,postmortems,runbooks}/`（临时过程草稿仅允许写 `.tmp/`），并由 `internal/arch_test.go` 对全仓 `.md` 路径、命名与 `status` Frontmatter 做确定性守卫。

@@ -3,7 +3,7 @@
 本仓库为 **Go 后端 + React Web 后台 + Taro 微信小程序** 一体化 Monorepo。确定性检查已下沉至编译器、Go AST 守卫、ESLint `anti-slop` 插件与契约漂移校验，此处仅保留跨端协作流程：
 
 ## 1. 仓库边界与产物位置
-- **全栈文档归口**：跨端需求拆解、架构方案统一放在根目录 `docs/ai/YYYY-MM-DD-主题.md`；临时脚本放 `.tmp/`。禁止在根目录或子应用内新建零散 `.md`。
+- **文档生命周期归口**（由 `arch_test.go` 强制校验）：临时草稿与一次性调研放 `.tmp/`（不入库）；正式文档统一归口根 `docs/`：需求拆解 `docs/specs/YYYY-MM-DD-<slug>.md`、架构决策 `docs/adr/NNNN-<slug>.md`（两者须含 `status: draft|accepted|superseded` Frontmatter）、故障复盘 `docs/postmortems/YYYY-MM-DD-<slug>.md`、运维手册 `docs/runbooks/<slug>.md`。严禁在别处新建零散 `.md`。
 - **子应用物理边界**：
   - `apps/server/`: Go 后端（`internal/arch_test.go` 自动隔离所有业务模块并拦截违规 API/补丁注释）。
   - `apps/web/`: React 管理后台（业务层禁 `useEffect`/`setTimeout`/裸 `fetch`/规则豁免，页面记忆见 `src/feature-map.ts`）。

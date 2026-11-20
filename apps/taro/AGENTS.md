@@ -3,7 +3,7 @@
 本应用与 Go 后端配套，采用 **Taro 4 (React + TS 无 DOM) + OpenAPI 派生契约 + `src/core` 纯逻辑隔离 + ESLint `anti-slop` 硬约束**。
 
 ## 1. 产物与依赖约束
-- 方案文档统一放仓库根目录 `docs/ai/YYYY-MM-DD-主题.md`，临时文件放 `.tmp/`；禁止随意引入新 npm 依赖。
+- 临时草稿放根 `.tmp/`，正式方案/决策统一按根 `AGENTS.md` 归入根 `docs/{specs,adr,postmortems,runbooks}/`；禁止随意引入新 npm 依赖。
 - 严禁使用 `any`、非空断言 `!` 以及任何 `eslint-disable` / `biome-ignore` / `@ts-ignore` 规则豁免注释。
 
 ## 2. 小程序架构与编码红线

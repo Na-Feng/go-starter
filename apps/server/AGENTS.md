@@ -3,7 +3,7 @@
 本仓库采用 **极简内核 + 垂直业务切片（Vertical Slice）** 架构。跨模块隔离、高危 API 禁用、防补丁注释及 OpenAPI/权限码对齐已由 `internal/arch_test.go` 与 `internal/openapi_contract_test.go` 在 `go test` 阶段强制执行：
 
 ## 1. 产物与变更边界
-- **AI 文档位置**：方案文档统一放根目录 `docs/ai/YYYY-MM-DD-主题.md`；临时脚本放 `.tmp/`。禁止新建零散 `.md`。
+- **文档归口**：临时脚本与草稿放根 `.tmp/`；正式方案/决策/复盘按根 `AGENTS.md` 归入根 `docs/{specs,adr,postmortems,runbooks}/`（由 `arch_test.go` 物理拦截零散 `.md`）。
 - **内核只读 & 依赖克制**：做业务需求时禁止修改 `internal/kernel/`；禁止擅自 `go get` 新第三方库（先说明理由并确认）。
 - **防凑合红线**：业务模块禁止 `time.Sleep`、`//nolint`、`TODO/HACK` 标记及函数内超过 2 行的解释性注释块，遇到冲突直接修复根因。
 
