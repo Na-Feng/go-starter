@@ -14,6 +14,7 @@ const antiSlopPlugin = {
             type: 'object',
             properties: {
               maxConsecutiveLines: { type: 'integer', minimum: 1 },
+              maxFileLines: { type: 'integer', minimum: 1 },
             },
             additionalProperties: false,
           },
@@ -22,12 +23,23 @@ const antiSlopPlugin = {
       create(context) {
         const opts = context.options[0] ?? {};
         const maxLines = opts.maxConsecutiveLines ?? 0;
+        const maxFileLines = opts.maxFileLines ?? 0;
         const isTestFile = /\.(test|spec)\.[cm]?[jt]sx?$/.test(
           context.filename,
         );
 
         return {
-          Program() {
+          Program(node) {
+            if (maxFileLines > 0 && !isTestFile) {
+              const totalLines = context.sourceCode.lines.length;
+              if (totalLines > maxFileLines) {
+                context.report({
+                  loc: node.loc,
+                  message: `业务单文件禁止超过 ${maxFileLines} 行（当前 ${totalLines} 行）：请拆分为独立子组件、Hooks 或纯逻辑模块，防止长任务上下文膨胀。`,
+                });
+              }
+            }
+
             const comments = context.sourceCode.getAllComments();
             const groups = [];
 
@@ -95,6 +107,7 @@ export default tseslint.config(
     },
     rules: {
       'anti-slop/comment-hygiene': 'error',
+      'no-empty': ['error', { allowEmptyCatch: false }],
       '@typescript-eslint/ban-ts-comment': [
         'error',
         {
@@ -111,14 +124,17 @@ export default tseslint.config(
       'anti-slop': antiSlopPlugin,
     },
     rules: {
-      'anti-slop/comment-hygiene': ['error', { maxConsecutiveLines: 2 }],
+      'anti-slop/comment-hygiene': [
+        'error',
+        { maxConsecutiveLines: 2, maxFileLines: 500 },
+      ],
       'no-alert': 'error',
       'no-restricted-globals': [
         'error',
         {
           name: 'fetch',
           message:
-            '禁止在业务页面直接调用裸 fetch：请统一使用 src/lib/api.ts 的 apiRequest。',
+            '禁止在业务页面直接调用裸 fetch：请统一使用 src/lib/api.ts 的 api。',
         },
         {
           name: 'localStorage',

@@ -9,7 +9,8 @@
 | **新增/改造功能**（单端或跨端） | 加载 `add-feature`（`.agents/skills/add-feature/SKILL.md`），先锁定范围 | 仅同步和检查受影响端（跨端跑 `make check-all`） |
 | **功能验收 / 发版前自检** | 加载 `verify-all`（`.agents/skills/verify-all/SKILL.md`） | 按改动端串联静态检查、`test-int`、运行时实测与 `git diff` 净度清理 |
 | **修完 Bug / 被打回重写** | 加载 `reflect`（`.agents/skills/reflect/SKILL.md`） | 追问漏检根因，按「类型 > AST/Lint > 测试 > `AGENTS.md`」确认后沉淀 |
-| **无人值守 / 自动开发** | 加载 `autonomous`（`.agents/skills/autonomous/SKILL.md`） | `auto/*` 分支隔离 + 3次失败熔断 + 独立只读审查 + CI Squash Auto-merge |
+| **长任务开工前排雷** | 加载 `spec-check`（`.agents/skills/spec-check/SKILL.md`） | 只读交叉挑刺 `docs/specs/` 草案（权限/迁移/事务/异常边界），定稿为 `accepted` |
+| **长任务挂机 / 自动开发** | 加载 `autonomous`（`.agents/skills/autonomous/SKILL.md`） | `auto/*` 单分支原子串行 + 零提问记假设 + 审查禁挑刺/脏改动回滚 + CI Auto-merge |
 
 ## 2. 仓库边界与产物位置
 - **文档生命周期归口**（由 `arch_test.go` 强制校验）：临时草稿与一次性调研放 `.tmp/`（不入库）；正式文档统一归口根 `docs/`：需求拆解 `docs/specs/YYYY-MM-DD-<slug>.md`、架构决策 `docs/adr/NNNN-<slug>.md`（两者须含 `status: draft|accepted|superseded` Frontmatter）、故障复盘 `docs/postmortems/YYYY-MM-DD-<slug>.md`、运维手册 `docs/runbooks/<slug>.md`。严禁在别处新建零散 `.md`。

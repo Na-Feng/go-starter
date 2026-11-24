@@ -50,6 +50,16 @@ describe('Taro anti-slop & package isolation ESLint guardrails', () => {
         code: '// line 1\n// line 2\n// line 3\nexport const x = 1;\n',
         expectMsg: '禁止超过 2 行的长篇解释性注释',
       },
+      {
+        file: 'src/subpackages/sample/bad.tsx',
+        code: 'export function swallow() { try { JSON.parse("x"); } catch {} }',
+        expectMsg: 'Empty block statement',
+      },
+      {
+        file: 'src/core/giant.ts',
+        code: 'export const n = 1;\n'.repeat(502),
+        expectMsg: '业务单文件禁止超过 500 行',
+      },
     ];
 
     for (const tc of cases) {

@@ -51,6 +51,16 @@ describe('Web anti-slop ESLint guardrails', () => {
         code: '// line 1\n// line 2\n// line 3\nexport const x = 1;\n',
         expectMsg: '禁止超过 2 行的长篇解释性注释',
       },
+      {
+        name: 'empty catch error swallowing',
+        code: 'export function swallow() { try { JSON.parse("x"); } catch {} }',
+        expectMsg: 'Empty block statement',
+      },
+      {
+        name: 'oversized >500 lines page',
+        code: 'export const a = 1;\n'.repeat(502),
+        expectMsg: '业务单文件禁止超过 500 行',
+      },
     ];
 
     for (const tc of cases) {

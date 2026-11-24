@@ -14,7 +14,10 @@ import (
 	"testing"
 )
 
-const moduleImportPrefix = "go-starter/internal/modules/"
+const (
+	moduleImportPrefix   = "go-starter/internal/modules/"
+	maxBusinessFileLines = 500
+)
 
 var debtMarkerRe = regexp.MustCompile(`(?i)\b(TODO|FIXME|HACK|WORKAROUND|XXX)\b`)
 
@@ -121,6 +124,12 @@ func TestArchGuardrailsCatchViolations(t *testing.T) {
 			relPath:    "internal/modules/sample/bad.go",
 			src:        `package sample; import "net/http"; func f(mux *http.ServeMux, h http.HandlerFunc) { mux.HandleFunc("GET /x", h) }`,
 			wantSubstr: "禁止在业务模块直接注册裸 ServeMux 路由",
+		},
+		{
+			name:       "oversized_business_file_blocked",
+			relPath:    "internal/modules/sample/giant.go",
+			src:        "package sample\n" + strings.Repeat("var _ = 1\n", 505),
+			wantSubstr: "业务单文件禁止超过 500 行",
 		},
 		{
 			name:       "nolint_bypass_blocked",
@@ -236,6 +245,13 @@ func analyzeGoAST(relPath string, fset *token.FileSet, file *ast.File) []string 
 
 	if !isBusinessModule || isTest {
 		return out
+	}
+
+	if tf := fset.File(file.Pos()); tf != nil && tf.LineCount() > maxBusinessFileLines {
+		out = append(out, fmt.Sprintf(
+			"%s:1: 业务单文件禁止超过 %d 行（当前 %d 行），请按职责拆分为 handler / service / repo / model 等独立文件，避免长任务上下文膨胀",
+			relPath, maxBusinessFileLines, tf.LineCount(),
+		))
 	}
 
 	var funcRanges [][2]token.Pos

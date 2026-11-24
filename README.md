@@ -28,7 +28,8 @@ make gen-api && make check-all && make test-int
 - `add-feature`：按范围裁剪的新增/改造功能剧本（Go + OpenAPI 契约 + Arco Web + Taro）
 - `verify-all`：按改动端执行静态检查、`test-int`、运行时实测与 `git diff` 净度清理剧本
 - `reflect`：故障复盘与“信任倒金字塔”底层约束下沉剧本
-- `autonomous`：无人值守开发剧本（`auto/*` 分支隔离、3 次失败硬熔断、独立只读审查与 CI 自动合入）
+- `spec-check`：长任务开工前规格只读挑刺与消歧定稿剧本
+- `autonomous`：长任务无人值守剧本（`auto/*` 单分支原子串行、零提问记假设、2 次受阻根因会诊、审查封顶防死循环与 CI 自动合入）
 
 ## 开启无人值守 Auto-merge（GitHub 仓库设置）
 在 GitHub 仓库的 `Settings -> General -> Pull Requests` 中勾选 **Allow auto-merge** 与 **Allow squash merging**，并在 `Settings -> Actions -> General -> Workflow permissions` 允许 GitHub Actions 创建与批准操作后：
