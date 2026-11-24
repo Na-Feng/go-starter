@@ -9,7 +9,7 @@
 
 ## 2. 模块组织与契约对齐
 - **垂直聚合**：新业务放 `internal/modules/<domain>/`（参考 `sample/` 或 `iam/`），`arch_test.go` 会自动对其启用跨模块 import 物理隔离，同时建议同步维护 `.golangci.yml`。
-- **路由与权限真源**：新增 HTTP 路由必须同步写入 `docs/openapi.yaml`；新增 `RequirePermission` 权限码必须同步写入 `db/migrations/*.sql` 与 `docs/openapi.yaml` 的 `PermissionCode` 枚举。
+- **路由与契约互锁**：业务模块严禁直接操作裸 `*http.ServeMux` 或裸 `go` 协程，必须通过 `*auth.Router`（`Public` / `Authenticated` / `Protected`）显式注册路由、通过 `async.Go` 启动协程；`openapi_contract_test.go` 与 `sql_hygiene_test.go` 会自动校验路由鉴权等级、Go 结构体字段/必填项与 `docs/openapi.yaml` 一致性，以及 SQL 表列名拼写。
 - **数据库与接口约定**：多步写操作用 `txMgr.WithinTx` + `auditRecorder.Record`；入参统一 `httpx.DecodeAndValidate`；响应统一 `httpx.OK` / `Created` / `Fail`。
 
 ## 3. 交付与沉淀标准（Inner Loop）

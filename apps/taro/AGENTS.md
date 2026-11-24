@@ -10,7 +10,7 @@
 - **无 DOM 与标签约束**：`tsconfig.json` 已剔除 `DOM` lib，禁止 `window`/`document` 及原生 HTML 标签（统一用 `@tarojs/components`）。
 - **核心逻辑与物化记忆**：纯业务校验、状态转换与页面功能地图统一放在 `src/core/`（严禁导入 `@tarojs/*`、`wx` 或定时器）；新增页面或分包路由时同步更新 `src/app.config.ts` 与 `src/core/feature-map.ts`（由单测强制对齐）。
 - **主包/分包与防凑合隔离**：主包放 `src/pages/`，业务放 `src/subpackages/<domain>/`，严禁主包/`lib`/`core` 反向引用分包；页面层严禁 `useEffect`、`setTimeout`/`setInterval`、裸 `Taro.request`、直接读写 `Taro.*Storage*` 及超过 2 行的解释性注释。
-- **契约与请求**：运行 `pnpm gen:api` 刷新 `src/api/openapi.gen.d.ts`（禁止手改），请求统一走 `src/lib/request.ts`（路径受 `ApiEndpoint` 约束）。
+- **契约与请求**：运行 `pnpm gen:api` 刷新 `src/api/openapi.gen.d.ts`（禁止手改），业务统一调用 `src/lib/request.ts` 的 `api.get/post`（自动从 OpenAPI 推导请求体与响应类型）。
 
 ## 3. 验证与交付标准（Inner Loop）
 1. **静态与纯逻辑单测**：每次修改后必须执行 `pnpm check`（`check:api` + Biome + ESLint + `tsc` + Vitest 属性与对齐单测）全绿。

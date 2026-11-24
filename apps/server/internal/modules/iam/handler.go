@@ -18,28 +18,23 @@ func NewHandler(svc *Service, log *slog.Logger) *Handler {
 	return &Handler{svc: svc, log: log}
 }
 
-func (h *Handler) Register(mux *http.ServeMux, jwtMgr *auth.Manager, bl auth.TokenBlacklist) {
-	authMW := auth.RequireAuth(jwtMgr, bl, h.log)
-	perm := func(code string, next http.HandlerFunc) http.Handler {
-		return authMW(auth.RequirePermission(code, h.svc, h.log)(next))
-	}
+func (h *Handler) Register(r *auth.Router) {
+	r.Public("POST /api/v1/auth/login", h.login)
+	r.Public("POST /api/v1/auth/refresh", h.refresh)
+	r.Authenticated("POST /api/v1/auth/logout", h.logout)
+	r.Authenticated("GET /api/v1/auth/me", h.me)
+	r.Authenticated("POST /api/v1/auth/change-password", h.changePassword)
 
-	mux.HandleFunc("POST /api/v1/auth/login", h.login)
-	mux.HandleFunc("POST /api/v1/auth/refresh", h.refresh)
-	mux.Handle("POST /api/v1/auth/logout", authMW(http.HandlerFunc(h.logout)))
-	mux.Handle("GET /api/v1/auth/me", authMW(http.HandlerFunc(h.me)))
-	mux.Handle("POST /api/v1/auth/change-password", authMW(http.HandlerFunc(h.changePassword)))
+	r.Protected("GET /api/v1/iam/users", "iam:user:read", h.listUsers)
+	r.Protected("POST /api/v1/iam/users", "iam:user:write", h.createUser)
+	r.Protected("PATCH /api/v1/iam/users/{id}/status", "iam:user:write", h.updateUserStatus)
+	r.Protected("PUT /api/v1/iam/users/{id}/roles", "iam:user:write", h.assignUserRoles)
 
-	mux.Handle("GET /api/v1/iam/users", perm("iam:user:read", h.listUsers))
-	mux.Handle("POST /api/v1/iam/users", perm("iam:user:write", h.createUser))
-	mux.Handle("PATCH /api/v1/iam/users/{id}/status", perm("iam:user:write", h.updateUserStatus))
-	mux.Handle("PUT /api/v1/iam/users/{id}/roles", perm("iam:user:write", h.assignUserRoles))
-
-	mux.Handle("GET /api/v1/iam/roles", perm("iam:role:read", h.listRoles))
-	mux.Handle("POST /api/v1/iam/roles", perm("iam:role:write", h.createRole))
-	mux.Handle("PUT /api/v1/iam/roles/{id}/permissions", perm("iam:role:write", h.assignRolePerms))
-	mux.Handle("GET /api/v1/iam/permissions", perm("iam:role:read", h.listPermissions))
-	mux.Handle("GET /api/v1/iam/audit-logs", perm("iam:audit:read", h.listAuditLogs))
+	r.Protected("GET /api/v1/iam/roles", "iam:role:read", h.listRoles)
+	r.Protected("POST /api/v1/iam/roles", "iam:role:write", h.createRole)
+	r.Protected("PUT /api/v1/iam/roles/{id}/permissions", "iam:role:write", h.assignRolePerms)
+	r.Protected("GET /api/v1/iam/permissions", "iam:role:read", h.listPermissions)
+	r.Protected("GET /api/v1/iam/audit-logs", "iam:audit:read", h.listAuditLogs)
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {

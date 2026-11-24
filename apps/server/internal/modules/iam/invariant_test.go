@@ -9,10 +9,30 @@ import (
 	"testing"
 	"time"
 
+	"go-starter/internal/kernel/audit"
 	"go-starter/internal/kernel/auth"
+	"go-starter/internal/kernel/db"
 	"go-starter/internal/kernel/errs"
+	"go-starter/internal/kernel/httpx"
 	"go-starter/internal/modules/iam"
 )
+
+type txStrictAuditRecorder struct {
+	t     *testing.T
+	count int
+}
+
+func (r *txStrictAuditRecorder) Record(ctx context.Context, _, action, _, _ string, _ any) error {
+	if !db.InTx(ctx) {
+		r.t.Fatalf("invariant broken: audit.Record(%q) executed outside WithinTx transaction scope", action)
+	}
+	r.count++
+	return nil
+}
+
+func (r *txStrictAuditRecorder) List(_ context.Context, pq httpx.PageQuery) (httpx.PageResult[audit.Entry], error) {
+	return httpx.PageResult[audit.Entry]{Items: []audit.Entry{}, Page: pq.Page, PageSize: pq.PageSize}, nil
+}
 
 type memPermCache struct {
 	mu    sync.RWMutex
@@ -54,7 +74,8 @@ func TestIAMStatefulModelInvariants(t *testing.T) {
 	repo.roles["role_editor"] = iam.Role{ID: "role_editor", Code: "editor", Name: "内容编辑"}
 	repo.rolePerms["role_editor"] = []string{"sample:write"}
 
-	svc := iam.NewService(repo, nil, jwtMgr, bl, cache, nil, 15*time.Minute, 24*time.Hour)
+	auditRec := &txStrictAuditRecorder{t: t}
+	svc := iam.NewService(repo, db.NewMemoryTxManager(), jwtMgr, bl, cache, auditRec, 15*time.Minute, 24*time.Hour)
 
 	password := "pass123456"
 	user, err := svc.CreateUser(ctx, "actor_admin", iam.CreateUserReq{

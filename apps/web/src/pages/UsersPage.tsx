@@ -1,5 +1,5 @@
-import type { PageResult, User } from '@/api/schema';
-import { apiRequest } from '@/lib/api';
+import type { User, UserStatus } from '@/api/schema';
+import { api } from '@/lib/api';
 import { Can } from '@/lib/auth';
 import { Card, Message, Switch, Table, Tag } from '@arco-design/web-react';
 import type { ColumnProps } from '@arco-design/web-react/es/Table';
@@ -10,18 +10,16 @@ export function UsersPage() {
   const usersQuery = useQuery({
     queryKey: ['iam', 'users'],
     queryFn: () =>
-      apiRequest<PageResult<User>>('/api/v1/iam/users?page=1&page_size=20'),
+      api.get('/api/v1/iam/users', { query: { page: 1, page_size: 20 } }),
   });
 
   const toggleStatus = useMutation({
-    mutationFn: ({
-      id,
-      status,
-    }: { id: string; status: 'active' | 'disabled' }) =>
-      apiRequest(`/api/v1/iam/users/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      }),
+    mutationFn: ({ id, status }: { id: string; status: UserStatus }) =>
+      api.patch(
+        '/api/v1/iam/users/{id}/status',
+        { status },
+        { params: { id } },
+      ),
     onSuccess: () => {
       Message.success('状态已更新');
       void qc.invalidateQueries({ queryKey: ['iam', 'users'] });

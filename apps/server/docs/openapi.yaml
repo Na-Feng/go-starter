@@ -43,6 +43,26 @@ components:
         - iam:role:write
         - iam:audit:read
         - sample:write
+    StatusAck:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+    AsyncTaskAck:
+      type: object
+      required: [task_id]
+      properties:
+        task_id:
+          type: string
+    ChunkUploadAck:
+      type: object
+      required: [chunk_index, status]
+      properties:
+        chunk_index:
+          type: integer
+        status:
+          type: string
     TokenPair:
       type: object
       required: [access_token, refresh_token, expires_in]
@@ -175,6 +195,51 @@ components:
           type: integer
         sha256:
           type: string
+    UserPage:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        page_size:
+          type: integer
+    SamplePage:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SampleItem'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        page_size:
+          type: integer
+    AuditEntryPage:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntry'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        page_size:
+          type: integer
     LoginReq:
       type: object
       required: [username, password]
@@ -290,12 +355,32 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/StatusAck' }
   /readyz:
     get:
       summary: 就绪探针
       responses:
         '200':
           description: Ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/StatusAck' }
   /api/v1/auth/login:
     post:
       summary: 账号密码登录
@@ -308,6 +393,16 @@ paths:
       responses:
         '200':
           description: TokenPair
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/TokenPair' }
   /api/v1/auth/refresh:
     post:
       summary: 刷新访问令牌
@@ -320,6 +415,16 @@ paths:
       responses:
         '200':
           description: TokenPair
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/TokenPair' }
   /api/v1/auth/logout:
     post:
       summary: 退出登录（吊销当前 Token）
@@ -327,6 +432,16 @@ paths:
       responses:
         '200':
           description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/StatusAck' }
   /api/v1/auth/me:
     get:
       summary: 获取当前用户信息与权限列表
@@ -334,6 +449,16 @@ paths:
       responses:
         '200':
           description: MeResp
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/MeResp' }
   /api/v1/auth/change-password:
     post:
       summary: 修改当前用户密码
@@ -347,6 +472,16 @@ paths:
       responses:
         '200':
           description: PasswordUpdated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/StatusAck' }
   /api/v1/iam/users:
     get:
       summary: 分页查询用户列表（需 iam:user:read）
@@ -357,6 +492,16 @@ paths:
       responses:
         '200':
           description: PageResult<User>
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/UserPage' }
     post:
       summary: 创建新用户（需 iam:user:write）
       security: [{ BearerAuth: [] }]
@@ -369,6 +514,16 @@ paths:
       responses:
         '201':
           description: User
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/User' }
   /api/v1/iam/users/{id}/status:
     patch:
       summary: 启用或禁用用户状态（需 iam:user:write）
@@ -388,6 +543,16 @@ paths:
       responses:
         '200':
           description: StatusUpdated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/StatusAck' }
   /api/v1/iam/users/{id}/roles:
     put:
       summary: 分配用户角色（需 iam:user:write）
@@ -407,6 +572,16 @@ paths:
       responses:
         '200':
           description: RolesAssigned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/StatusAck' }
   /api/v1/iam/roles:
     get:
       summary: 查询角色列表（需 iam:role:read）
@@ -414,6 +589,19 @@ paths:
       responses:
         '200':
           description: RoleList
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Role'
     post:
       summary: 创建角色（需 iam:role:write）
       security: [{ BearerAuth: [] }]
@@ -426,6 +614,16 @@ paths:
       responses:
         '201':
           description: Role
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/Role' }
   /api/v1/iam/roles/{id}/permissions:
     put:
       summary: 配置角色权限（需 iam:role:write）
@@ -445,6 +643,16 @@ paths:
       responses:
         '200':
           description: PermissionsAssigned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/StatusAck' }
   /api/v1/iam/permissions:
     get:
       summary: 查询全部权限码（需 iam:role:read）
@@ -452,6 +660,19 @@ paths:
       responses:
         '200':
           description: PermissionList
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Permission'
   /api/v1/iam/audit-logs:
     get:
       summary: 分页查询操作审计日志（需 iam:audit:read）
@@ -462,6 +683,16 @@ paths:
       responses:
         '200':
           description: PageResult<AuditEntry>
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/AuditEntryPage' }
   /api/v1/samples:
     get:
       summary: 分页查询示例条目
@@ -471,6 +702,16 @@ paths:
       responses:
         '200':
           description: PageResult<SampleItem>
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/SamplePage' }
     post:
       summary: 新增示例条目（需 sample:write）
       security: [{ BearerAuth: [] }]
@@ -483,6 +724,16 @@ paths:
       responses:
         '201':
           description: SampleItem
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/SampleItem' }
   /api/v1/samples/{id}:
     get:
       summary: 查询单条示例详情
@@ -495,6 +746,16 @@ paths:
       responses:
         '200':
           description: SampleItem
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/SampleItem' }
   /api/v1/samples/export:
     post:
       summary: 异步导出示例数据
@@ -502,6 +763,16 @@ paths:
       responses:
         '202':
           description: ExportAccepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/AsyncTaskAck' }
   /api/v1/files/upload:
     post:
       summary: 小文件直传（图片自动安全校验并等比压缩）
@@ -509,6 +780,16 @@ paths:
       responses:
         '201':
           description: FileInfo
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/FileInfo' }
   /api/v1/files/multipart/init:
     post:
       summary: 初始化大文件分片上传
@@ -522,6 +803,16 @@ paths:
       responses:
         '201':
           description: MultipartSession
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/MultipartSession' }
   /api/v1/files/multipart/{upload_id}/chunks/{index}:
     put:
       summary: 上传单个分片（二进制流，支持断点重传）
@@ -540,6 +831,16 @@ paths:
       responses:
         '200':
           description: ChunkAccepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/ChunkUploadAck' }
   /api/v1/files/multipart/{upload_id}/complete:
     post:
       summary: 合并分片并校验 SHA256
@@ -553,6 +854,16 @@ paths:
       responses:
         '201':
           description: FileInfo
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  request_id: { type: string }
+                  data: { $ref: '#/components/schemas/FileInfo' }
   /api/v1/files/{key}:
     get:
       summary: 下载或流式播放文件（支持 HTTP Range）

@@ -39,7 +39,7 @@ func TestIAMPostgresRedisIntegration(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	iam.NewHandler(svc, log).Register(mux, jwtMgr, bl)
+	iam.NewHandler(svc, log).Register(auth.NewRouter(mux, jwtMgr, bl, svc, log))
 
 	// 1. 真实库登录
 	recLogin := httptest.NewRecorder()

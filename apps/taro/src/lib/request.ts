@@ -1,4 +1,12 @@
-import type { ApiEndpoint, Envelope, TokenPair } from '@/api/schema';
+import type {
+  Envelope,
+  JsonBodyOf,
+  PathParamsOf,
+  PathsWithMethod,
+  QueryParamsOf,
+  ResponseDataOf,
+  TokenPair,
+} from '@/api/schema';
 import Taro from '@tarojs/taro';
 
 const ACCESS_KEY = 'gs_access_token';
@@ -27,12 +35,35 @@ export const tokenStorage = {
   },
 };
 
-export async function apiRequest<T>(
-  path: ApiEndpoint,
-  options: {
-    method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-    data?: object;
-  } = {},
+function buildUrl(
+  template: string,
+  params?: Record<string, string | number>,
+  query?: Record<string, string | number | boolean | undefined>,
+): string {
+  let resolved = template;
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      resolved = resolved.replace(`{${k}}`, encodeURIComponent(String(v)));
+    }
+  }
+  if (query) {
+    const pairs: string[] = [];
+    for (const [k, v] of Object.entries(query)) {
+      if (v !== undefined) {
+        pairs.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+      }
+    }
+    if (pairs.length > 0) {
+      resolved = `${resolved}?${pairs.join('&')}`;
+    }
+  }
+  return `${BASE_URL}${resolved}`;
+}
+
+async function sendTaroEnvelope<T>(
+  url: string,
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  data?: object,
 ): Promise<T> {
   const token = tokenStorage.getAccess();
   const header: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -40,10 +71,10 @@ export async function apiRequest<T>(
     header.Authorization = `Bearer ${token}`;
   }
 
-  const res = await Taro.request<Envelope<T>>({
-    url: `${BASE_URL}${path}`,
-    method: options.method ?? 'GET',
-    data: options.data,
+  const res = await Taro.request<Envelope<T> | string>({
+    url,
+    method,
+    data,
     header,
     timeout: 15000,
   });
@@ -54,12 +85,74 @@ export async function apiRequest<T>(
     throw new ApiError(40101, '请先登录', 401);
   }
 
-  if (res.statusCode < 200 || res.statusCode >= 300 || res.data.code !== 0) {
+  const payload =
+    typeof res.data === 'object' && res.data !== null
+      ? (res.data as Partial<Envelope<T>>)
+      : null;
+
+  if (
+    res.statusCode < 200 ||
+    res.statusCode >= 300 ||
+    !payload ||
+    payload.code !== 0
+  ) {
     throw new ApiError(
-      res.data?.code ?? res.statusCode,
-      res.data?.message ?? '请求失败',
+      payload?.code ?? res.statusCode,
+      payload?.message ?? `请求失败 (HTTP ${res.statusCode})`,
       res.statusCode,
     );
   }
-  return res.data.data;
+  return payload.data as T;
 }
+
+type GetArgs<P extends PathsWithMethod<'get'>> = PathParamsOf<
+  P,
+  'get'
+> extends undefined
+  ? [options?: { query?: QueryParamsOf<P, 'get'> }]
+  : [
+      options: {
+        params: PathParamsOf<P, 'get'>;
+        query?: QueryParamsOf<P, 'get'>;
+      },
+    ];
+
+type PostArgs<P extends PathsWithMethod<'post'>> = PathParamsOf<
+  P,
+  'post'
+> extends undefined
+  ? JsonBodyOf<P, 'post'> extends undefined
+    ? []
+    : [body: JsonBodyOf<P, 'post'>]
+  : JsonBodyOf<P, 'post'> extends undefined
+    ? [options: { params: PathParamsOf<P, 'post'> }]
+    : [
+        body: JsonBodyOf<P, 'post'>,
+        options: { params: PathParamsOf<P, 'post'> },
+      ];
+
+export const api = {
+  get<P extends PathsWithMethod<'get'>>(
+    path: P,
+    ...args: GetArgs<P>
+  ): Promise<ResponseDataOf<P, 'get'>> {
+    const opts = args[0] as
+      | {
+          params?: Record<string, string | number>;
+          query?: Record<string, string | number | boolean | undefined>;
+        }
+      | undefined;
+    return sendTaroEnvelope(buildUrl(path, opts?.params, opts?.query), 'GET');
+  },
+
+  post<P extends PathsWithMethod<'post'>>(
+    path: P,
+    ...args: PostArgs<P>
+  ): Promise<ResponseDataOf<P, 'post'>> {
+    const body = args[0] as object | undefined;
+    const opts = args[1] as
+      | { params?: Record<string, string | number> }
+      | undefined;
+    return sendTaroEnvelope(buildUrl(path, opts?.params), 'POST', body);
+  },
+};

@@ -111,6 +111,18 @@ func TestArchGuardrailsCatchViolations(t *testing.T) {
 			wantSubstr: "禁止使用无超时的默认 http.Get/Post",
 		},
 		{
+			name:       "bare_goroutine_blocked",
+			relPath:    "internal/modules/sample/bad.go",
+			src:        `package sample; func f() { go func() {}() }`,
+			wantSubstr: "禁止在业务模块直接使用裸 go 协程",
+		},
+		{
+			name:       "bare_servemux_handle_blocked",
+			relPath:    "internal/modules/sample/bad.go",
+			src:        `package sample; import "net/http"; func f(mux *http.ServeMux, h http.HandlerFunc) { mux.HandleFunc("GET /x", h) }`,
+			wantSubstr: "禁止在业务模块直接注册裸 ServeMux 路由",
+		},
+		{
 			name:       "nolint_bypass_blocked",
 			relPath:    "internal/modules/sample/bad.go",
 			src:        "package sample\n//nolint:errcheck\nfunc f() {}\n",
@@ -237,6 +249,11 @@ func analyzeGoAST(relPath string, fset *token.FileSet, file *ast.File) []string 
 			if fn.Body != nil {
 				funcRanges = append(funcRanges, [2]token.Pos{fn.Body.Lbrace, fn.Body.Rbrace})
 			}
+		case *ast.GoStmt:
+			out = append(out, fmt.Sprintf(
+				"%s: 禁止在业务模块直接使用裸 go 协程（未捕获 panic 且受请求 Context 取消影响），请改用 internal/kernel/async.Go 或 worker 异步队列",
+				posStr(fn.Pos()),
+			))
 		case *ast.CallExpr:
 			switch fun := fn.Fun.(type) {
 			case *ast.Ident:
@@ -244,6 +261,13 @@ func analyzeGoAST(relPath string, fset *token.FileSet, file *ast.File) []string 
 					out = append(out, fmt.Sprintf("%s: 禁止在业务代码调用 panic，请返回 *errs.AppError", posStr(fun.Pos())))
 				}
 			case *ast.SelectorExpr:
+				if fun.Sel.Name == "Handle" || fun.Sel.Name == "HandleFunc" {
+					out = append(out, fmt.Sprintf(
+						"%s: 禁止在业务模块直接注册裸 ServeMux 路由 (%s)，请统一使用 *auth.Router 的 Public / Authenticated / Protected 显式声明鉴权等级",
+						posStr(fun.Pos()), fun.Sel.Name,
+					))
+					return true
+				}
 				pkgIdent, ok := fun.X.(*ast.Ident)
 				if !ok {
 					return true
@@ -312,7 +336,10 @@ var (
 	specDocRe         = regexp.MustCompile(`^docs/specs/\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$`)
 	postmortemDocRe   = regexp.MustCompile(`^docs/postmortems/\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$`)
 	runbookDocRe      = regexp.MustCompile(`^docs/runbooks/[a-z][a-z0-9-]*\.md$`)
+	agentSkillDocRe   = regexp.MustCompile(`^\.agents/skills/([a-z0-9-]+)/SKILL\.md$`)
 	frontmatterStatRe = regexp.MustCompile(`(?m)^status:\s*(draft|accepted|superseded)\s*$`)
+	skillNameRe       = regexp.MustCompile(`(?m)^name:\s*([a-z0-9-]+)\s*$`)
+	skillDescRe       = regexp.MustCompile(`(?m)^description:\s*\S+`)
 )
 
 func TestMarkdownDocsLayoutAndFrontmatterGuardrail(t *testing.T) {
@@ -332,7 +359,7 @@ func TestMarkdownDocsLayoutAndFrontmatterGuardrail(t *testing.T) {
 		}
 		name := d.Name()
 		if d.IsDir() {
-			if name != "." && name != ".." && (strings.HasPrefix(name, ".") || skipDirs[name]) {
+			if name != "." && name != ".." && name != ".agents" && (strings.HasPrefix(name, ".") || skipDirs[name]) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -377,6 +404,21 @@ func TestMarkdownGuardrailCatchesViolations(t *testing.T) {
 		{relPath: "docs/postmortems/2026-11-19-cache-bug.md", content: "# Postmortem", expectClean: true},
 		{relPath: "docs/runbooks/deploy-prod.md", content: "# Runbook", expectClean: true},
 		{
+			relPath:     ".agents/skills/add-feature/SKILL.md",
+			content:     "---\nname: add-feature\ndescription: Add feature playbook\n---\n# Playbook\n",
+			expectClean: true,
+		},
+		{
+			relPath:    ".agents/skills/add-feature/SKILL.md",
+			content:    "---\nname: wrong-name\ndescription: mismatch\n---\n# Playbook\n",
+			wantSubstr: "Frontmatter 的 name 必须与目录名",
+		},
+		{
+			relPath:    ".agents/random.md",
+			content:    "# Stray",
+			wantSubstr: "禁止新建未归口 .md 文件",
+		},
+		{
 			relPath:    "docs/ai/2026-11-19-note.md",
 			content:    validFM,
 			wantSubstr: "禁止新建未归口 .md 文件",
@@ -413,16 +455,30 @@ func validateMarkdownDoc(relPath, content string) string {
 	if allowedEntryDocRe.MatchString(relPath) || postmortemDocRe.MatchString(relPath) || runbookDocRe.MatchString(relPath) {
 		return ""
 	}
+	if m := agentSkillDocRe.FindStringSubmatch(relPath); m != nil {
+		dirName := m[1]
+		fm, ok := extractYAMLFrontmatter(content)
+		if !ok {
+			return fmt.Sprintf("%s: 通用 Skill 必须包含标准 YAML Frontmatter（name 与 description）", relPath)
+		}
+		nm := skillNameRe.FindStringSubmatch(fm)
+		if nm == nil || nm[1] != dirName {
+			return fmt.Sprintf("%s: Frontmatter 的 name 必须与目录名 %q 一致", relPath, dirName)
+		}
+		if !skillDescRe.MatchString(fm) {
+			return fmt.Sprintf("%s: Frontmatter 缺少非空 description 字段", relPath)
+		}
+		return ""
+	}
 	if adrDocRe.MatchString(relPath) || specDocRe.MatchString(relPath) {
-		trimmed := strings.TrimLeft(content, "\ufeff")
-		if !strings.HasPrefix(trimmed, "---\n") {
+		fm, ok := extractYAMLFrontmatter(content)
+		if !ok {
 			return fmt.Sprintf(
 				"%s: specs/ 与 adr/ 文档必须以 YAML Frontmatter 开头并声明 status: draft|accepted|superseded",
 				relPath,
 			)
 		}
-		endIdx := strings.Index(trimmed[4:], "\n---")
-		if endIdx < 0 || !frontmatterStatRe.MatchString(trimmed[4:4+endIdx]) {
+		if !frontmatterStatRe.MatchString(fm) {
 			return fmt.Sprintf(
 				"%s: Frontmatter 缺少合法的 status 字段（可选值：draft | accepted | superseded）",
 				relPath,
@@ -434,4 +490,16 @@ func validateMarkdownDoc(relPath, content string) string {
 		"%s: 禁止新建未归口 .md 文件；临时草稿请放 .tmp/，正式文档请按用途放入 docs/specs/YYYY-MM-DD-<slug>.md、docs/adr/NNNN-<slug>.md、docs/postmortems/YYYY-MM-DD-<slug>.md 或 docs/runbooks/<slug>.md",
 		relPath,
 	)
+}
+
+func extractYAMLFrontmatter(content string) (string, bool) {
+	trimmed := strings.TrimLeft(content, "\ufeff")
+	if !strings.HasPrefix(trimmed, "---\n") {
+		return "", false
+	}
+	endIdx := strings.Index(trimmed[4:], "\n---")
+	if endIdx < 0 {
+		return "", false
+	}
+	return trimmed[4 : 4+endIdx], true
 }

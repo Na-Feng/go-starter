@@ -1,6 +1,5 @@
-import type { PageResult, SampleItem } from '@/api/schema';
 import { validateSampleTitle } from '@/core/sample';
-import { apiRequest } from '@/lib/request';
+import { api } from '@/lib/request';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
@@ -13,7 +12,7 @@ export default function SampleSubpackagePage() {
   const listQuery = useQuery({
     queryKey: ['samples', 1],
     queryFn: () =>
-      apiRequest<PageResult<SampleItem>>('/api/v1/samples?page=1&page_size=20'),
+      api.get('/api/v1/samples', { query: { page: 1, page_size: 20 } }),
   });
 
   useDidShow(() => {
@@ -22,10 +21,7 @@ export default function SampleSubpackagePage() {
 
   const createMut = useMutation({
     mutationFn: (validTitle: string) =>
-      apiRequest<SampleItem>('/api/v1/samples', {
-        method: 'POST',
-        data: { title: validTitle },
-      }),
+      api.post('/api/v1/samples', { title: validTitle }),
     onSuccess: () => {
       setTitle('');
       void qc.invalidateQueries({ queryKey: ['samples'] });

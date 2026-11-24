@@ -33,7 +33,7 @@ func TestImageCompressionAndMultipartUpload(t *testing.T) {
 	token, _ := jwtMgr.Sign("usr_1", []string{"operator"}, auth.TokenTypeAccess, time.Hour)
 
 	mux := http.NewServeMux()
-	files.NewHandler(store, 10, 100, log).Register(mux, jwtMgr, nil)
+	files.NewHandler(store, 10, 100, log).Register(auth.NewRouter(mux, jwtMgr, nil, nil, log))
 
 	// 1. 测试大图自动等比压缩（1600x800 -> 800x400）
 	img := image.NewRGBA(image.Rect(0, 0, 1600, 800))

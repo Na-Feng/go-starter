@@ -7,7 +7,7 @@
 - 严禁使用 `any`、非空断言 `!` 以及 `eslint-disable` / `biome-ignore` / `@ts-ignore` 豁免注释（已由 Biome 与 ESLint 锁死）。
 
 ## 2. 架构与编码红线
-- **契约与路径锁死**：`src/api/openapi.gen.d.ts` 由 `pnpm gen:api` 自动生成（禁止手改），业务引用 `src/api/schema.d.ts`；请求统一走 `apiRequest`（路径受 `ApiEndpoint` 编译期约束），按钮权限用 `<Can perm="...">`（受 `PermissionCode` 枚举约束）。
+- **契约与类型自动推导**：`src/api/openapi.gen.d.ts` 由 `pnpm gen:api` 生成（禁止手改）；业务统一调用 `src/lib/api.ts` 的 `api.get/post/put/patch/upload`（自动从 OpenAPI 推导路径参数、请求体与返回类型，禁止手填 `<T>`），权限控制使用 `<Can perm="...">` 与 `feature-map.ts` 的 `routePerm`（自动拦截路由与侧边栏菜单）。
 - **物化记忆对齐**：新增或修改页面路由、标题、权限或交互入口时，必须同步更新 `src/feature-map.ts`（由 `feature-map.test.tsx` 挂载 `<App />` 强制校验对齐）。
 - **防凑合限制**：`src/pages/` 与 `src/features/` 严禁调用 `useEffect`、`setTimeout`/`setInterval`、裸 `fetch`、直接读写 `localStorage`/`sessionStorage`，并禁止超过 2 行的连续解释注释或 `TODO/HACK` 标记。
 - **UI 组件规范**：统一使用 `@arco-design/web-react`，查阅类型定义对齐 Props。

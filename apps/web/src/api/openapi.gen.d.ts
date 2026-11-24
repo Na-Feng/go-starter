@@ -26,7 +26,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['StatusAck'];
+            };
+          };
         };
       };
     };
@@ -60,7 +67,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['StatusAck'];
+            };
+          };
         };
       };
     };
@@ -100,7 +114,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['TokenPair'];
+            };
+          };
         };
       };
     };
@@ -138,7 +159,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['TokenPair'];
+            };
+          };
         };
       };
     };
@@ -172,7 +200,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['StatusAck'];
+            };
+          };
         };
       };
     };
@@ -204,7 +239,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['MeResp'];
+            };
+          };
         };
       };
     };
@@ -244,7 +286,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['StatusAck'];
+            };
+          };
         };
       };
     };
@@ -279,7 +328,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['UserPage'];
+            };
+          };
         };
       };
     };
@@ -303,7 +359,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['User'];
+            };
+          };
         };
       };
     };
@@ -347,7 +410,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['StatusAck'];
+            };
+          };
         };
       };
     };
@@ -382,7 +452,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['StatusAck'];
+            };
+          };
         };
       };
     };
@@ -415,7 +492,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['Role'][];
+            };
+          };
         };
       };
     };
@@ -439,7 +523,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['Role'];
+            };
+          };
         };
       };
     };
@@ -478,7 +569,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['StatusAck'];
+            };
+          };
         };
       };
     };
@@ -511,7 +609,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['Permission'][];
+            };
+          };
         };
       };
     };
@@ -548,7 +653,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['AuditEntryPage'];
+            };
+          };
         };
       };
     };
@@ -585,7 +697,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['SamplePage'];
+            };
+          };
         };
       };
     };
@@ -609,7 +728,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['SampleItem'];
+            };
+          };
         };
       };
     };
@@ -643,7 +769,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['SampleItem'];
+            };
+          };
         };
       };
     };
@@ -679,7 +812,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['AsyncTaskAck'];
+            };
+          };
         };
       };
     };
@@ -713,7 +853,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['FileInfo'];
+            };
+          };
         };
       };
     };
@@ -751,7 +898,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['MultipartSession'];
+            };
+          };
         };
       };
     };
@@ -787,7 +941,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['ChunkUploadAck'];
+            };
+          };
         };
       };
     };
@@ -824,7 +985,14 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              code: number;
+              message: string;
+              request_id?: string;
+              data: components['schemas']['FileInfo'];
+            };
+          };
         };
       };
     };
@@ -884,6 +1052,16 @@ export interface components {
       | 'iam:role:write'
       | 'iam:audit:read'
       | 'sample:write';
+    StatusAck: {
+      status: string;
+    };
+    AsyncTaskAck: {
+      task_id: string;
+    };
+    ChunkUploadAck: {
+      chunk_index: number;
+      status: string;
+    };
     TokenPair: {
       access_token: string;
       refresh_token: string;
@@ -950,6 +1128,27 @@ export interface components {
       total_size: number;
       total_chunks: number;
       sha256?: string;
+    };
+    UserPage: {
+      items: components['schemas']['User'][];
+      /** Format: int64 */
+      total: number;
+      page: number;
+      page_size: number;
+    };
+    SamplePage: {
+      items: components['schemas']['SampleItem'][];
+      /** Format: int64 */
+      total: number;
+      page: number;
+      page_size: number;
+    };
+    AuditEntryPage: {
+      items: components['schemas']['AuditEntry'][];
+      /** Format: int64 */
+      total: number;
+      page: number;
+      page_size: number;
     };
     LoginReq: {
       username: string;

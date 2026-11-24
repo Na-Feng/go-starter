@@ -1,0 +1,137 @@
+name: CI & Auto-Merge Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-all:
+    name: Deterministic Static Checks, Contract Sync & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: apps/server/go.sum
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: apps/server
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Go formatting is clean
+        run: test -z "$(gofmt -s -l apps/server)"
+
+      - name: Run fullstack inner-loop checks (Server AST/Property + Web/Taro Contract/Lint/TSC/Vitest)
+        run: make check-all
+
+      - name: Verify Web production build
+        run: pnpm --filter web-starter build
+
+  integration-test:
+    name: Real Postgres & Redis Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: starter_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: apps/server/go.sum
+
+      - name: Run Go integration tests
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/starter_test?sslmode=disable
+          TEST_REDIS_ADDR: localhost:6379
+          TEST_REDIS_DB: '15'
+        run: make test-int
+
+  risk-gate:
+    name: High-Risk Governance & Kernel Path Guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      high_risk: ${{ steps.scan.outputs.high_risk }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan changed files for protected paths and destructive SQL
+        id: scan
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          HIGH_RISK="false"
+          if echo "$CHANGED" | grep -qE '^(apps/server/(\.golangci\.yml|internal/arch_test\.go|internal/openapi_contract_test\.go|internal/kernel/)|apps/web/(eslint\.config\.js|biome\.json)|apps/taro/(eslint\.config\.js|biome\.json)|\.github/|\.agents/|AGENTS\.md|apps/.*/AGENTS\.md)'; then
+            echo "Matched protected governance, kernel, or workflow path."
+            HIGH_RISK="true"
+          fi
+
+          if echo "$CHANGED" | grep -qE '^apps/server/db/migrations/'; then
+            if git diff "$BASE_SHA" "$HEAD_SHA" -- apps/server/db/migrations/ | grep -iE '^\+.*\b(DROP|TRUNCATE)\b'; then
+              echo "Detected destructive SQL (DROP/TRUNCATE) in migrations."
+              HIGH_RISK="true"
+            fi
+          fi
+
+          echo "high_risk=$HIGH_RISK" >> "$GITHUB_OUTPUT"
+
+  auto-merge:
+    name: Auto Squash Merge (Low-Risk PRs)
+    if: github.event_name == 'pull_request' && needs.risk-gate.outputs.high_risk == 'false'
+    needs: [check-all, integration-test, risk-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable Squash Auto-Merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"

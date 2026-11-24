@@ -169,7 +169,7 @@ func TestIAMAuthAndRBACFlow(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	iam.NewHandler(svc, log).Register(mux, jwtMgr, bl)
+	iam.NewHandler(svc, log).Register(auth.NewRouter(mux, jwtMgr, bl, svc, log))
 
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/auth/login",

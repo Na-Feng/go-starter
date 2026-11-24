@@ -34,13 +34,12 @@ func NewHandler(store storage.Store, maxUploadMB, maxLargeUploadMB int64, log *s
 	}
 }
 
-func (h *Handler) Register(mux *http.ServeMux, jwtMgr *auth.Manager, bl auth.TokenBlacklist) {
-	authMW := auth.RequireAuth(jwtMgr, bl, h.log)
-	mux.Handle("POST /api/v1/files/upload", authMW(http.HandlerFunc(h.upload)))
-	mux.Handle("POST /api/v1/files/multipart/init", authMW(http.HandlerFunc(h.initMultipart)))
-	mux.Handle("PUT /api/v1/files/multipart/{upload_id}/chunks/{index}", authMW(http.HandlerFunc(h.uploadChunk)))
-	mux.Handle("POST /api/v1/files/multipart/{upload_id}/complete", authMW(http.HandlerFunc(h.completeMultipart)))
-	mux.HandleFunc("GET /api/v1/files/{key}", h.download)
+func (h *Handler) Register(r *auth.Router) {
+	r.Authenticated("POST /api/v1/files/upload", h.upload)
+	r.Authenticated("POST /api/v1/files/multipart/init", h.initMultipart)
+	r.Authenticated("PUT /api/v1/files/multipart/{upload_id}/chunks/{index}", h.uploadChunk)
+	r.Authenticated("POST /api/v1/files/multipart/{upload_id}/complete", h.completeMultipart)
+	r.Public("GET /api/v1/files/{key}", h.download)
 }
 
 func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {

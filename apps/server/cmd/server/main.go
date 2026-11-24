@@ -93,13 +93,14 @@ func main() {
 		log.Error("seed admin failed", "error", err)
 		os.Exit(1)
 	}
-	iam.NewHandler(iamSvc, log).Register(mux, jwtMgr, blacklist)
 
-	files.NewHandler(store, cfg.MaxUploadMB, cfg.MaxLargeUploadMB, log).Register(mux, jwtMgr, blacklist)
+	apiRouter := auth.NewRouter(mux, jwtMgr, blacklist, iamSvc, log)
+	iam.NewHandler(iamSvc, log).Register(apiRouter)
+	files.NewHandler(store, cfg.MaxUploadMB, cfg.MaxLargeUploadMB, log).Register(apiRouter)
 
 	sampleRepo := sample.NewPostgresRepo(pool)
 	sampleSvc := sample.NewService(sampleRepo, txMgr)
-	sample.NewHandler(sampleSvc, workerClient, log).Register(mux, jwtMgr, blacklist, iamSvc)
+	sample.NewHandler(sampleSvc, workerClient, log).Register(apiRouter)
 
 	// 4. 挂载公共中间件链
 	handler := middleware.Chain(

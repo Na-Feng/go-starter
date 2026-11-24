@@ -17,6 +17,27 @@ type DBTX interface {
 }
 
 type txCtxKey struct{}
+type memTxCtxKey struct{}
+
+// InTx 判断当前 ctx 是否处于 WithinTx 开启的显式事务作用域中（兼容真实 Postgres 事务与单测 MemoryTxManager）。
+func InTx(ctx context.Context) bool {
+	if _, ok := ctx.Value(txCtxKey{}).(pgx.Tx); ok {
+		return true
+	}
+	v, _ := ctx.Value(memTxCtxKey{}).(bool)
+	return v
+}
+
+// MemoryTxManager 供无数据库的单元测试注入，用于校验多步写操作与审计日志未漏包事务或误传外层 ctx。
+type MemoryTxManager struct{}
+
+func NewMemoryTxManager() *MemoryTxManager {
+	return &MemoryTxManager{}
+}
+
+func (MemoryTxManager) WithinTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(context.WithValue(ctx, memTxCtxKey{}, true))
+}
 
 func NewPool(ctx context.Context, dsn string, maxConns, minConns int32) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)

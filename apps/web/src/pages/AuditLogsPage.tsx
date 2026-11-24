@@ -1,5 +1,5 @@
-import type { AuditEntry, PageResult } from '@/api/schema';
-import { apiRequest } from '@/lib/api';
+import type { AuditEntry } from '@/api/schema';
+import { api } from '@/lib/api';
 import { Card, Table } from '@arco-design/web-react';
 import type { ColumnProps } from '@arco-design/web-react/es/Table';
 import { useQuery } from '@tanstack/react-query';
@@ -19,9 +19,7 @@ export function AuditLogsPage() {
   const query = useQuery({
     queryKey: ['iam', 'audit-logs', page],
     queryFn: () =>
-      apiRequest<PageResult<AuditEntry>>(
-        `/api/v1/iam/audit-logs?page=${page}&page_size=20`,
-      ),
+      api.get('/api/v1/iam/audit-logs', { query: { page, page_size: 20 } }),
   });
 
   return (

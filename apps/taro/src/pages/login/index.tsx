@@ -1,5 +1,4 @@
-import type { TokenPair } from '@/api/schema';
-import { apiRequest, tokenStorage } from '@/lib/request';
+import { api, tokenStorage } from '@/lib/request';
 import { useMutation } from '@tanstack/react-query';
 import { Button, Input, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
@@ -10,11 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('admin123');
 
   const loginMut = useMutation({
-    mutationFn: () =>
-      apiRequest<TokenPair>('/api/v1/auth/login', {
-        method: 'POST',
-        data: { username, password },
-      }),
+    mutationFn: () => api.post('/api/v1/auth/login', { username, password }),
     onSuccess: (pair) => {
       tokenStorage.setTokens(pair);
       void Taro.showToast({ title: '登录成功', icon: 'success' });

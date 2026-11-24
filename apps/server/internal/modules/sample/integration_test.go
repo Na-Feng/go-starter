@@ -34,7 +34,7 @@ func TestSamplePostgresIntegration(t *testing.T) {
 	h := sample.NewHandler(svc, nil, log)
 
 	mux := http.NewServeMux()
-	h.Register(mux, jwtMgr, nil, allowAllPerms{})
+	h.Register(auth.NewRouter(mux, jwtMgr, nil, allowAllPerms{}, log))
 
 	// 1. 真实写入 Postgres
 	reqCreate := httptest.NewRequest(http.MethodPost, "/api/v1/samples", bytes.NewBufferString(`{"title":"real-pg-item"}`))

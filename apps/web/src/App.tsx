@@ -1,10 +1,21 @@
-import { WEB_MENU_FEATURES } from '@/feature-map';
-import { RequireAuth, useLogout, useMe } from '@/lib/auth';
+import {
+  WEB_MENU_FEATURES,
+  WEB_PROTECTED_FEATURES,
+  type WebFeatureId,
+} from '@/feature-map';
+import {
+  RequireAuth,
+  RequirePermission,
+  hasPermission,
+  useLogout,
+  useMe,
+} from '@/lib/auth';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { SamplesPage } from '@/pages/SamplesPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { Button, Layout, Menu, Space } from '@arco-design/web-react';
+import type { ComponentType } from 'react';
 import {
   Navigate,
   Outlet,
@@ -14,11 +25,24 @@ import {
   useNavigate,
 } from 'react-router-dom';
 
+const FEATURE_COMPONENTS: Record<WebFeatureId, ComponentType> = {
+  'auth.login': LoginPage,
+  'sample.list': SamplesPage,
+  'iam.users': UsersPage,
+  'iam.audit-logs': AuditLogsPage,
+};
+
 function AdminLayout() {
   const { data } = useMe();
   const logout = useLogout();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const visibleMenus = WEB_MENU_FEATURES.filter(
+    (item) =>
+      !item.routePerm ||
+      (data && hasPermission(data.roles, data.permissions, item.routePerm)),
+  );
 
   return (
     <Layout className="min-h-screen">
@@ -34,7 +58,7 @@ function AdminLayout() {
           selectedKeys={[location.pathname]}
           onClickMenuItem={(key) => navigate(key)}
         >
-          {WEB_MENU_FEATURES.map((item) => (
+          {visibleMenus.map((item) => (
             <Menu.Item key={item.route}>{item.menuLabel}</Menu.Item>
           ))}
         </Menu>
@@ -77,9 +101,20 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route path="/samples" element={<SamplesPage />} />
-        <Route path="/iam/users" element={<UsersPage />} />
-        <Route path="/iam/audit-logs" element={<AuditLogsPage />} />
+        {WEB_PROTECTED_FEATURES.map((entry) => {
+          const PageComp = FEATURE_COMPONENTS[entry.id];
+          return (
+            <Route
+              key={entry.id}
+              path={entry.route}
+              element={
+                <RequirePermission perm={entry.routePerm}>
+                  <PageComp />
+                </RequirePermission>
+              }
+            />
+          );
+        })}
       </Route>
       <Route path="*" element={<Navigate to="/samples" replace />} />
     </Routes>

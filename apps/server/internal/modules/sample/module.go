@@ -143,17 +143,11 @@ func NewHandler(svc *Service, w *worker.Client, log *slog.Logger) *Handler {
 	return &Handler{svc: svc, worker: w, log: log}
 }
 
-func (h *Handler) Register(mux *http.ServeMux, jwtMgr *auth.Manager, bl auth.TokenBlacklist, permChecker auth.PermissionChecker) {
-	mux.HandleFunc("GET /api/v1/samples", h.list)
-	mux.HandleFunc("GET /api/v1/samples/{id}", h.get)
-	mux.Handle("POST /api/v1/samples",
-		auth.RequireAuth(jwtMgr, bl, h.log)(
-			auth.RequirePermission("sample:write", permChecker, h.log)(http.HandlerFunc(h.create)),
-		),
-	)
-	mux.Handle("POST /api/v1/samples/export",
-		auth.RequireAuth(jwtMgr, bl, h.log)(http.HandlerFunc(h.exportAsync)),
-	)
+func (h *Handler) Register(r *auth.Router) {
+	r.Public("GET /api/v1/samples", h.list)
+	r.Public("GET /api/v1/samples/{id}", h.get)
+	r.Protected("POST /api/v1/samples", "sample:write", h.create)
+	r.Authenticated("POST /api/v1/samples/export", h.exportAsync)
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {

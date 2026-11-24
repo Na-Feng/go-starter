@@ -1,11 +1,18 @@
 import type { ApiRoute, PermissionCode } from '@/api/schema';
 
+export type WebFeatureId =
+  | 'auth.login'
+  | 'sample.list'
+  | 'iam.users'
+  | 'iam.audit-logs';
+
 export interface WebFeatureEntry {
-  readonly id: string;
+  readonly id: WebFeatureId;
   readonly route: `/${string}`;
   readonly title: string;
   readonly menuLabel?: string;
   readonly authRequired: boolean;
+  readonly routePerm?: PermissionCode;
   readonly permissions: readonly PermissionCode[];
   readonly apis: readonly ApiRoute[];
   readonly interactions: readonly string[];
@@ -41,6 +48,7 @@ export const WEB_FEATURE_MAP: readonly WebFeatureEntry[] = [
     title: '用户与状态管理（RBAC）',
     menuLabel: '用户管理',
     authRequired: true,
+    routePerm: 'iam:user:read',
     permissions: ['iam:user:read', 'iam:user:write'],
     apis: ['/api/v1/iam/users', '/api/v1/iam/users/{id}/status'],
     interactions: [
@@ -54,11 +62,16 @@ export const WEB_FEATURE_MAP: readonly WebFeatureEntry[] = [
     title: '操作审计日志',
     menuLabel: '审计日志',
     authRequired: true,
+    routePerm: 'iam:audit:read',
     permissions: ['iam:audit:read'],
     apis: ['/api/v1/iam/audit-logs'],
     interactions: ['按页查看关键写操作的审计记录（操作人、动作、目标、IP）'],
   },
 ];
+
+export const WEB_PROTECTED_FEATURES = WEB_FEATURE_MAP.filter(
+  (item) => item.authRequired,
+);
 
 export const WEB_MENU_FEATURES = WEB_FEATURE_MAP.filter(
   (item): item is WebFeatureEntry & { readonly menuLabel: string } =>

@@ -1,5 +1,5 @@
-import type { PageResult, SampleItem } from '@/api/schema';
-import { apiRequest } from '@/lib/api';
+import type { SampleItem } from '@/api/schema';
+import { api } from '@/lib/api';
 import { Can } from '@/lib/auth';
 import {
   Button,
@@ -29,17 +29,11 @@ export function SamplesPage() {
   const listQuery = useQuery({
     queryKey: ['samples', page],
     queryFn: () =>
-      apiRequest<PageResult<SampleItem>>(
-        `/api/v1/samples?page=${page}&page_size=10`,
-      ),
+      api.get('/api/v1/samples', { query: { page, page_size: 10 } }),
   });
 
   const createMut = useMutation({
-    mutationFn: (title: string) =>
-      apiRequest<SampleItem>('/api/v1/samples', {
-        method: 'POST',
-        body: JSON.stringify({ title }),
-      }),
+    mutationFn: (title: string) => api.post('/api/v1/samples', { title }),
     onSuccess: () => {
       form.resetFields();
       Message.success('创建成功');
@@ -59,13 +53,7 @@ export function SamplesPage() {
               const fd = new FormData();
               fd.append('file', option.file);
               try {
-                const res = await apiRequest<{ url: string }>(
-                  '/api/v1/files/upload',
-                  {
-                    method: 'POST',
-                    body: fd,
-                  },
-                );
+                const res = await api.upload('/api/v1/files/upload', fd);
                 Message.success(`上传成功：${res.url}`);
                 option.onSuccess(res);
               } catch (err) {
@@ -85,7 +73,14 @@ export function SamplesPage() {
             >
               <Form.Item
                 field="title"
-                rules={[{ required: true, message: '请输入标题' }]}
+                rules={[
+                  { required: true, message: '请输入标题' },
+                  {
+                    minLength: 2,
+                    maxLength: 100,
+                    message: '标题长度需在 2~100 个字符之间',
+                  },
+                ]}
               >
                 <Input placeholder="输入标题..." />
               </Form.Item>

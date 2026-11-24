@@ -35,7 +35,7 @@ func TestSampleModuleTableDriven(t *testing.T) {
 	h := sample.NewHandler(svc, nil, log)
 
 	mux := http.NewServeMux()
-	h.Register(mux, jwtMgr, nil, allowAllPerms{})
+	h.Register(auth.NewRouter(mux, jwtMgr, nil, allowAllPerms{}, log))
 
 	cases := []struct {
 		name       string

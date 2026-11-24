@@ -2,12 +2,14 @@ package testkit
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
@@ -45,9 +47,30 @@ func SetupPostgres(t *testing.T) *pgxpool.Pool {
 	}
 
 	truncate := func() {
-		_, err := pool.Exec(ctx, `TRUNCATE TABLE samples, audit_logs, users RESTART IDENTITY CASCADE`)
+		rows, err := pool.Query(ctx, `
+			SELECT tablename FROM pg_tables
+			WHERE schemaname = 'public'
+			  AND tablename NOT IN ('goose_db_version', 'roles', 'permissions', 'role_permissions')
+			ORDER BY tablename`)
 		if err != nil {
-			t.Fatalf("truncate test tables: %v", err)
+			t.Fatalf("query public tables for truncate: %v", err)
+		}
+		var quoted []string
+		for rows.Next() {
+			var tbl string
+			if err := rows.Scan(&tbl); err != nil {
+				rows.Close()
+				t.Fatalf("scan table name: %v", err)
+			}
+			quoted = append(quoted, pgx.Identifier{tbl}.Sanitize())
+		}
+		rows.Close()
+		if len(quoted) == 0 {
+			return
+		}
+		q := fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE", strings.Join(quoted, ", "))
+		if _, err := pool.Exec(ctx, q); err != nil {
+			t.Fatalf("truncate test tables (%s): %v", q, err)
 		}
 	}
 	truncate()
