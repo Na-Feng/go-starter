@@ -183,6 +183,63 @@ describe('WEB_FEATURE_MAP materialized memory & route-level RBAC guard', () => {
     });
     await expect(api.get('/api/v1/samples')).rejects.toBeInstanceOf(ApiError);
   });
+
+  it('deduplicates concurrent 401 token refresh requests and replays in-flight API calls', async () => {
+    tokenStore.setTokens({
+      access_token: 'expired_access',
+      refresh_token: 'valid_refresh_1',
+      expires_in: 3600,
+    });
+
+    let refreshCallCount = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      const authHeader = new Headers(init?.headers).get('Authorization');
+
+      if (url.endsWith('/api/v1/auth/refresh')) {
+        refreshCallCount += 1;
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            message: 'ok',
+            data: {
+              access_token: 'fresh_access_2',
+              refresh_token: 'fresh_refresh_2',
+              expires_in: 7200,
+            },
+          }),
+          { status: 200 },
+        );
+      }
+
+      if (authHeader === 'Bearer expired_access') {
+        return new Response(
+          JSON.stringify({ code: 40101, message: 'token expired' }),
+          { status: 401 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          code: 0,
+          message: 'ok',
+          data: { items: [], total: 0, page: 1, page_size: 20 },
+        }),
+        { status: 200 },
+      );
+    });
+
+    const [resA, resB] = await Promise.all([
+      api.get('/api/v1/samples'),
+      api.get('/api/v1/iam/users'),
+    ]);
+
+    expect(refreshCallCount).toBe(1);
+    expect(resA.total).toBe(0);
+    expect(resB.total).toBe(0);
+    expect(tokenStore.getAccess()).toBe('fresh_access_2');
+    expect(tokenStore.getRefresh()).toBe('fresh_refresh_2');
+  });
 });
 
 describe('hasPermission property-based invariants', () => {

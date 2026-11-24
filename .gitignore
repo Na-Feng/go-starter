@@ -1,13 +1,15 @@
 # Dependencies & build outputs
 node_modules/
 dist/
+.swc/
 *.tsbuildinfo
 /apps/server/bin/
 /apps/server/uploads/
 
-# Environment & temp files
+# Environment & local config overrides
 .env
 .env.local
+**/configs/*.local.yaml
 /.tmp/
 playwright-report/
 test-results/

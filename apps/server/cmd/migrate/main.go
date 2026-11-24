@@ -22,6 +22,12 @@ func main() {
 	}
 
 	ctx := context.Background()
+	if cfg.AppEnv != "prod" {
+		if err := db.EnsureDatabase(ctx, cfg.DatabaseURL); err != nil {
+			slog.Error("failed to ensure database exists", "error", err)
+			os.Exit(1)
+		}
+	}
 	pool, err := db.NewPool(ctx, cfg.DatabaseURL, 2, 1)
 	if err != nil {
 		slog.Error("failed to connect database", "error", err)

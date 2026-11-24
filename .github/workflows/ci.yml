@@ -45,8 +45,10 @@ jobs:
       - name: Run fullstack inner-loop checks (Server AST/Property + Web/Taro Contract/Lint/TSC/Vitest)
         run: make check-all
 
-      - name: Verify Web production build
-        run: pnpm --filter web-starter build
+      - name: Verify Web & Taro production builds
+        run: |
+          pnpm --filter web-starter build
+          pnpm --filter taro-starter build:weapp
 
   integration-test:
     name: Real Postgres & Redis Integration Tests

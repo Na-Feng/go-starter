@@ -63,7 +63,66 @@ function buildUrl(
   return `${BASE_URL}${resolved}`;
 }
 
-async function sendEnvelope<T>(url: string, init: RequestInit): Promise<T> {
+let refreshInFlight: Promise<boolean> | null = null;
+
+function tryRefreshTokens(): Promise<boolean> {
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+  const refreshToken = tokenStore.getRefresh();
+  if (!refreshToken) {
+    return Promise.resolve(false);
+  }
+
+  refreshInFlight = (async () => {
+    try {
+      const res = await fetch(buildUrl('/api/v1/auth/refresh'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!res.ok) {
+        tokenStore.clear();
+        return false;
+      }
+      const raw = await res.text();
+      const json = raw
+        ? (JSON.parse(raw) as Partial<Envelope<TokenPair>>)
+        : null;
+      if (
+        json?.code === 0 &&
+        json.data?.access_token &&
+        json.data?.refresh_token
+      ) {
+        tokenStore.setTokens(json.data);
+        return true;
+      }
+      tokenStore.clear();
+      return false;
+    } catch {
+      tokenStore.clear();
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+function isAuthLifecycleUrl(url: string): boolean {
+  return (
+    url.endsWith('/api/v1/auth/login') ||
+    url.endsWith('/api/v1/auth/refresh') ||
+    url.endsWith('/api/v1/auth/logout')
+  );
+}
+
+async function sendEnvelope<T>(
+  url: string,
+  init: RequestInit,
+  allowRefresh = true,
+): Promise<T> {
   const headers = new Headers(init.headers);
   const token = tokenStore.getAccess();
   if (token) {
@@ -78,8 +137,14 @@ async function sendEnvelope<T>(url: string, init: RequestInit): Promise<T> {
   }
 
   const res = await fetch(url, { ...init, headers });
-  const rawText = await res.text();
+  if (res.status === 401 && allowRefresh && !isAuthLifecycleUrl(url)) {
+    const refreshed = await tryRefreshTokens();
+    if (refreshed) {
+      return sendEnvelope<T>(url, init, false);
+    }
+  }
 
+  const rawText = await res.text();
   let json: Partial<Envelope<T>> | null = null;
   if (rawText) {
     try {

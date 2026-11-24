@@ -11,11 +11,11 @@ cd apps/server && go mod tidy && cd ../..
 # 2. 安装前端与小程序依赖（已通过 .npmrc 隔离 workspace 依赖）
 pnpm install
 
-# 3. 启动本地 Postgres 与 Redis
-make up
+# 3. 准备 PostgreSQL 与 Redis（本机已安装服务可直接跳过；若用 Docker 则执行 make up）
+#    后端配置位于 apps/server/configs/config.yaml（本地私有覆盖可新建 config.local.yaml），首次运行会自动建库
 
-# 4. 同步 OpenAPI 契约并跑通三端全量检查
-make gen-api && make check-all
+# 4. 同步 OpenAPI 契约并跑通三端全量检查（含真实库集成测试）
+make gen-api && make check-all && make test-int
 ```
 
 ## 日常启动

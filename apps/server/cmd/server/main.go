@@ -39,6 +39,12 @@ func main() {
 	log := logger.New(cfg.LogLevel, cfg.LogFormat)
 
 	// 1. 初始化 PostgreSQL、Redis 与本地存储
+	if cfg.AutoMigrate && cfg.AppEnv != "prod" {
+		if err := db.EnsureDatabase(context.Background(), cfg.DatabaseURL); err != nil {
+			log.Error("failed to ensure database exists", "error", err)
+			os.Exit(1)
+		}
+	}
 	pool, err := db.NewPool(context.Background(), cfg.DatabaseURL, cfg.DBMaxConns, cfg.DBMinConns)
 	if err != nil {
 		log.Error("failed to connect database", "error", err)

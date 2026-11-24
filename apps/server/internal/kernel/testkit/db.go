@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -14,21 +12,22 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"go-starter/internal/kernel/cache"
+	"go-starter/internal/kernel/config"
 	"go-starter/internal/kernel/db"
 )
 
-// SetupPostgres 连接真实测试数据库、自动执行 goose 迁移并在测试结束时清理数据。
-// 为防止误连开发/生产库，强制要求数据库名必须包含 "test"。
+// SetupPostgres 读取 configs/config.yaml（及本地 config.local.yaml / 环境变量覆盖），自动建测试库、执行迁移并在结束时清空业务表。
 func SetupPostgres(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		dsn = "postgres://postgres:postgres@localhost:5432/starter_test?sslmode=disable"
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("load config for integration test: %v", err)
 	}
+	dsn := cfg.TestDatabaseURL
 
 	u, err := url.Parse(dsn)
 	if err != nil {
-		t.Fatalf("parse TEST_DATABASE_URL: %v", err)
+		t.Fatalf("parse test.postgres_dsn: %v", err)
 	}
 	dbName := strings.TrimPrefix(u.Path, "/")
 	if !strings.Contains(strings.ToLower(dbName), "test") {
@@ -36,6 +35,9 @@ func SetupPostgres(t *testing.T) *pgxpool.Pool {
 	}
 
 	ctx := context.Background()
+	if err := db.EnsureDatabase(ctx, dsn); err != nil {
+		t.Fatalf("ensure test postgres database (%s): %v", dbName, err)
+	}
 	pool, err := db.NewPool(ctx, dsn, 5, 1)
 	if err != nil {
 		t.Fatalf("connect test postgres (%s): %v", dbName, err)
@@ -82,26 +84,19 @@ func SetupPostgres(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-// SetupRedis 连接独立测试 Redis DB（默认 DB 15），测试结束自动 FlushDB。
+// SetupRedis 连接独立测试 Redis DB（读取 test.redis_db，默认 15），测试结束自动 FlushDB。
 func SetupRedis(t *testing.T) *redis.Client {
 	t.Helper()
-	addr := os.Getenv("TEST_REDIS_ADDR")
-	if addr == "" {
-		addr = "localhost:6379"
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("load config for redis test: %v", err)
 	}
-	pass := os.Getenv("TEST_REDIS_PASSWORD")
-	dbIdx := 15
-	if raw := os.Getenv("TEST_REDIS_DB"); raw != "" {
-		if n, err := strconv.Atoi(raw); err == nil {
-			dbIdx = n
-		}
-	}
-	if dbIdx == 0 {
-		t.Fatalf("安全拦截：禁止在默认 Redis DB 0 上运行集成测试，请使用独立 DB（如 15）")
+	if cfg.TestRedisDB == 0 {
+		t.Fatalf("安全拦截：禁止在默认 Redis DB 0 上运行集成测试，请在 test.redis_db 使用独立 DB（如 15）")
 	}
 
 	ctx := context.Background()
-	rdb, err := cache.NewRedis(ctx, addr, pass, dbIdx)
+	rdb, err := cache.NewRedis(ctx, cfg.TestRedisAddr, cfg.TestRedisPassword, cfg.TestRedisDB)
 	if err != nil {
 		t.Fatalf("connect test redis: %v", err)
 	}

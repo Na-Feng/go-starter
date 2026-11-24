@@ -12,6 +12,7 @@ require (
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/crypto v0.28.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -39,5 +40,4 @@ require (
 	golang.org/x/text v0.19.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

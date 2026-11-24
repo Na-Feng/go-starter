@@ -2,7 +2,10 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -37,6 +40,47 @@ func NewMemoryTxManager() *MemoryTxManager {
 
 func (MemoryTxManager) WithinTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	return fn(context.WithValue(ctx, memTxCtxKey{}, true))
+}
+
+// EnsureDatabase 在本地开发或集成测试阶段幂等检测目标数据库是否存在，若不存在则连接 postgres 管理库自动创建。
+func EnsureDatabase(ctx context.Context, dsn string) error {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return fmt.Errorf("parse database url: %w", err)
+	}
+	dbName := strings.TrimPrefix(u.Path, "/")
+	if dbName == "" || dbName == "postgres" {
+		return nil
+	}
+
+	adminURL := *u
+	adminURL.Path = "/postgres"
+	connCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	conn, err := pgx.Connect(connCtx, adminURL.String())
+	if err != nil {
+		return fmt.Errorf("connect admin database: %w", err)
+	}
+	defer func() { _ = conn.Close(context.Background()) }()
+
+	var exists bool
+	if err := conn.QueryRow(connCtx, `SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)`, dbName).Scan(&exists); err != nil {
+		return fmt.Errorf("check database %q: %w", dbName, err)
+	}
+	if exists {
+		return nil
+	}
+
+	createSQL := "CREATE DATABASE " + pgx.Identifier{dbName}.Sanitize()
+	if _, err := conn.Exec(connCtx, createSQL); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "42P04" {
+			return nil
+		}
+		return fmt.Errorf("create database %q: %w", dbName, err)
+	}
+	return nil
 }
 
 func NewPool(ctx context.Context, dsn string, maxConns, minConns int32) (*pgxpool.Pool, error) {

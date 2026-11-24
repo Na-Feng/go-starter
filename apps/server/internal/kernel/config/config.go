@@ -1,11 +1,17 @@
 package config
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -35,109 +41,261 @@ type Config struct {
 	ImageMaxWidth      int
 	ImageJPEGQuality   int
 	WorkerConcurrency  int
+	TestDatabaseURL    string
+	TestRedisAddr      string
+	TestRedisPassword  string
+	TestRedisDB        int
 }
 
+type fileConfig struct {
+	App struct {
+		Env       string `yaml:"env"`
+		LogLevel  string `yaml:"log_level"`
+		LogFormat string `yaml:"log_format"`
+	} `yaml:"app"`
+	HTTP struct {
+		Addr               string        `yaml:"addr"`
+		CORSAllowedOrigins []string      `yaml:"cors_allowed_origins"`
+		RequestTimeout     time.Duration `yaml:"request_timeout"`
+		ReadTimeout        time.Duration `yaml:"read_timeout"`
+		WriteTimeout       time.Duration `yaml:"write_timeout"`
+		ShutdownTimeout    time.Duration `yaml:"shutdown_timeout"`
+		RateLimitPerMin    int64         `yaml:"rate_limit_per_min"`
+	} `yaml:"http"`
+	Postgres struct {
+		DSN         string `yaml:"dsn"`
+		MaxConns    int32  `yaml:"max_conns"`
+		MinConns    int32  `yaml:"min_conns"`
+		AutoMigrate bool   `yaml:"auto_migrate"`
+	} `yaml:"postgres"`
+	Redis struct {
+		Addr     string `yaml:"addr"`
+		Password string `yaml:"password"`
+		DB       int    `yaml:"db"`
+	} `yaml:"redis"`
+	JWT struct {
+		Secret     string        `yaml:"secret"`
+		AccessTTL  time.Duration `yaml:"access_ttl"`
+		RefreshTTL time.Duration `yaml:"refresh_ttl"`
+	} `yaml:"jwt"`
+	Storage struct {
+		UploadDir        string `yaml:"upload_dir"`
+		MaxUploadMB      int64  `yaml:"max_upload_mb"`
+		MaxLargeUploadMB int64  `yaml:"max_large_upload_mb"`
+		ImageMaxWidth    int    `yaml:"image_max_width"`
+		ImageJPEGQuality int    `yaml:"image_jpeg_quality"`
+	} `yaml:"storage"`
+	Worker struct {
+		Concurrency int `yaml:"concurrency"`
+	} `yaml:"worker"`
+	Test struct {
+		PostgresDSN   string `yaml:"postgres_dsn"`
+		RedisAddr     string `yaml:"redis_addr"`
+		RedisPassword string `yaml:"redis_password"`
+		RedisDB       int    `yaml:"redis_db"`
+	} `yaml:"test"`
+}
+
+func defaultFileConfig() fileConfig {
+	var fc fileConfig
+	fc.App.Env = "dev"
+	fc.App.LogLevel = "info"
+	fc.App.LogFormat = "text"
+
+	fc.HTTP.Addr = ":8080"
+	fc.HTTP.CORSAllowedOrigins = []string{"*"}
+	fc.HTTP.RequestTimeout = 15 * time.Second
+	fc.HTTP.ReadTimeout = 15 * time.Second
+	fc.HTTP.WriteTimeout = 15 * time.Second
+	fc.HTTP.ShutdownTimeout = 10 * time.Second
+	fc.HTTP.RateLimitPerMin = 120
+
+	fc.Postgres.DSN = "postgres://postgres:postgres@localhost:5432/starter?sslmode=disable"
+	fc.Postgres.MaxConns = 20
+	fc.Postgres.MinConns = 2
+	fc.Postgres.AutoMigrate = false
+
+	fc.Redis.Addr = "localhost:6379"
+	fc.Redis.DB = 0
+
+	fc.JWT.Secret = "dev-insecure-secret-change-in-prod"
+	fc.JWT.AccessTTL = 2 * time.Hour
+	fc.JWT.RefreshTTL = 7 * 24 * time.Hour
+
+	fc.Storage.UploadDir = "./uploads"
+	fc.Storage.MaxUploadMB = 10
+	fc.Storage.MaxLargeUploadMB = 500
+	fc.Storage.ImageMaxWidth = 1920
+	fc.Storage.ImageJPEGQuality = 80
+
+	fc.Worker.Concurrency = 5
+
+	fc.Test.PostgresDSN = "postgres://postgres:postgres@localhost:5432/starter_test?sslmode=disable"
+	fc.Test.RedisAddr = "localhost:6379"
+	fc.Test.RedisDB = 15
+	return fc
+}
+
+// Load 按「内置默认值 < configs/config.yaml < configs/config.local.yaml < 显式环境变量」顺序加载并严格校验配置。
 func Load() (Config, error) {
-	cfg := Config{
-		AppEnv:             getEnv("APP_ENV", "dev"),
-		HTTPAddr:           getEnv("HTTP_ADDR", ":8080"),
-		LogLevel:           getEnv("LOG_LEVEL", "info"),
-		LogFormat:          getEnv("LOG_FORMAT", "json"),
-		DatabaseURL:        getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/starter?sslmode=disable"),
-		DBMaxConns:         int32(getIntEnv("DB_MAX_CONNS", 20)),
-		DBMinConns:         int32(getIntEnv("DB_MIN_CONNS", 2)),
-		AutoMigrate:        getBoolEnv("AUTO_MIGRATE", false),
-		RedisAddr:          getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPassword:      getEnv("REDIS_PASSWORD", ""),
-		RedisDB:            getIntEnv("REDIS_DB", 0),
-		JWTSecret:          getEnv("JWT_SECRET", "dev-insecure-secret-change-in-prod"),
-		JWTAccessTTL:       getDurationEnv("JWT_ACCESS_TTL", 2*time.Hour),
-		JWTRefreshTTL:      getDurationEnv("JWT_REFRESH_TTL", 7*24*time.Hour),
-		CORSAllowedOrigins: getSliceEnv("CORS_ALLOWED_ORIGINS", []string{"*"}),
-		RequestTimeout:     getDurationEnv("REQUEST_TIMEOUT", 15*time.Second),
-		RateLimitPerMin:    int64(getIntEnv("RATE_LIMIT_PER_MIN", 120)),
-		ShutdownTimeout:    getDurationEnv("SHUTDOWN_TIMEOUT", 10*time.Second),
-		ReadTimeout:        getDurationEnv("READ_TIMEOUT", 15*time.Second),
-		WriteTimeout:       getDurationEnv("WRITE_TIMEOUT", 15*time.Second),
-		UploadDir:          getEnv("UPLOAD_DIR", "./uploads"),
-		MaxUploadMB:        int64(getIntEnv("MAX_UPLOAD_MB", 10)),
-		MaxLargeUploadMB:   int64(getIntEnv("MAX_LARGE_UPLOAD_MB", 500)),
-		ImageMaxWidth:      getIntEnv("IMAGE_MAX_WIDTH", 1920),
-		ImageJPEGQuality:   getIntEnv("IMAGE_JPEG_QUALITY", 80),
-		WorkerConcurrency:  getIntEnv("WORKER_CONCURRENCY", 5),
+	if explicit := strings.TrimSpace(os.Getenv("CONFIG_FILE")); explicit != "" {
+		return LoadFromFiles(explicit)
 	}
+	basePath := locateConfigFile()
+	if basePath == "" {
+		return LoadFromFiles()
+	}
+	localPath := filepath.Join(filepath.Dir(basePath), "config.local.yaml")
+	if _, err := os.Stat(localPath); err == nil {
+		return LoadFromFiles(basePath, localPath)
+	}
+	return LoadFromFiles(basePath)
+}
+
+// LoadFromFiles 从给定 YAML 文件列表依次覆盖解码（启用 KnownFields 拦截拼写错误），再叠加容器/CI 环境变量。
+func LoadFromFiles(paths ...string) (Config, error) {
+	fc := defaultFileConfig()
+	for _, p := range paths {
+		if err := decodeStrictYAMLFile(p, &fc); err != nil {
+			return Config{}, err
+		}
+	}
+
+	cfg := Config{
+		AppEnv:             fc.App.Env,
+		HTTPAddr:           fc.HTTP.Addr,
+		LogLevel:           fc.App.LogLevel,
+		LogFormat:          fc.App.LogFormat,
+		DatabaseURL:        fc.Postgres.DSN,
+		DBMaxConns:         fc.Postgres.MaxConns,
+		DBMinConns:         fc.Postgres.MinConns,
+		AutoMigrate:        fc.Postgres.AutoMigrate,
+		RedisAddr:          fc.Redis.Addr,
+		RedisPassword:      fc.Redis.Password,
+		RedisDB:            fc.Redis.DB,
+		JWTSecret:          fc.JWT.Secret,
+		JWTAccessTTL:       fc.JWT.AccessTTL,
+		JWTRefreshTTL:      fc.JWT.RefreshTTL,
+		CORSAllowedOrigins: fc.HTTP.CORSAllowedOrigins,
+		RequestTimeout:     fc.HTTP.RequestTimeout,
+		RateLimitPerMin:    fc.HTTP.RateLimitPerMin,
+		ShutdownTimeout:    fc.HTTP.ShutdownTimeout,
+		ReadTimeout:        fc.HTTP.ReadTimeout,
+		WriteTimeout:       fc.HTTP.WriteTimeout,
+		UploadDir:          fc.Storage.UploadDir,
+		MaxUploadMB:        fc.Storage.MaxUploadMB,
+		MaxLargeUploadMB:   fc.Storage.MaxLargeUploadMB,
+		ImageMaxWidth:      fc.Storage.ImageMaxWidth,
+		ImageJPEGQuality:   fc.Storage.ImageJPEGQuality,
+		WorkerConcurrency:  fc.Worker.Concurrency,
+		TestDatabaseURL:    fc.Test.PostgresDSN,
+		TestRedisAddr:      fc.Test.RedisAddr,
+		TestRedisPassword:  fc.Test.RedisPassword,
+		TestRedisDB:        fc.Test.RedisDB,
+	}
+
+	applyEnvOverrides(&cfg)
+
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
 }
 
-func (c Config) Validate() error {
-	if c.HTTPAddr == "" {
-		return errors.New("HTTP_ADDR cannot be empty")
+func decodeStrictYAMLFile(path string, dst *fileConfig) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read config %s: %w", path, err)
 	}
-	if c.DatabaseURL == "" {
-		return errors.New("DATABASE_URL cannot be empty")
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return nil
 	}
-	if c.AppEnv == "prod" && (c.JWTSecret == "" || c.JWTSecret == "dev-insecure-secret-change-in-prod") {
-		return errors.New("JWT_SECRET must be set in prod")
-	}
-	if c.ShutdownTimeout <= 0 {
-		return errors.New("SHUTDOWN_TIMEOUT must be positive")
+	dec := yaml.NewDecoder(bytes.NewReader(raw))
+	dec.KnownFields(true)
+	if err := dec.Decode(dst); err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("invalid config %s: %w", path, err)
 	}
 	return nil
 }
 
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+func locateConfigFile() string {
+	candidates := []string{
+		filepath.Join("configs", "config.yaml"),
+		filepath.Join("..", "configs", "config.yaml"),
+		filepath.Join("..", "..", "configs", "config.yaml"),
+		filepath.Join("..", "..", "..", "configs", "config.yaml"),
 	}
-	return fallback
-}
-
-func getSliceEnv(key string, fallback []string) []string {
-	v := strings.TrimSpace(os.Getenv(key))
-	if v == "" {
-		return fallback
-	}
-	parts := strings.Split(v, ",")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if s := strings.TrimSpace(p); s != "" {
-			out = append(out, s)
+	for _, c := range candidates {
+		if info, err := os.Stat(c); err == nil && !info.IsDir() {
+			return c
 		}
 	}
-	return out
+	return ""
 }
 
-func getIntEnv(key string, fallback int) int {
-	if v := os.Getenv(key); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			return n
-		}
+func applyEnvOverrides(c *Config) {
+	if v := os.Getenv("APP_ENV"); v != "" {
+		c.AppEnv = v
 	}
-	return fallback
-}
-
-func getBoolEnv(key string, fallback bool) bool {
-	if v := os.Getenv(key); v != "" {
+	if v := os.Getenv("HTTP_ADDR"); v != "" {
+		c.HTTPAddr = v
+	}
+	if v := os.Getenv("LOG_LEVEL"); v != "" {
+		c.LogLevel = v
+	}
+	if v := os.Getenv("LOG_FORMAT"); v != "" {
+		c.LogFormat = v
+	}
+	if v := os.Getenv("DATABASE_URL"); v != "" {
+		c.DatabaseURL = v
+	}
+	if v := os.Getenv("AUTO_MIGRATE"); v != "" {
 		if b, err := strconv.ParseBool(v); err == nil {
-			return b
+			c.AutoMigrate = b
 		}
 	}
-	return fallback
+	if v := os.Getenv("REDIS_ADDR"); v != "" {
+		c.RedisAddr = v
+	}
+	if v, ok := os.LookupEnv("REDIS_PASSWORD"); ok {
+		c.RedisPassword = v
+	}
+	if v := os.Getenv("REDIS_DB"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.RedisDB = n
+		}
+	}
+	if v := os.Getenv("JWT_SECRET"); v != "" {
+		c.JWTSecret = v
+	}
+	if v := os.Getenv("TEST_DATABASE_URL"); v != "" {
+		c.TestDatabaseURL = v
+	}
+	if v := os.Getenv("TEST_REDIS_ADDR"); v != "" {
+		c.TestRedisAddr = v
+	}
+	if v, ok := os.LookupEnv("TEST_REDIS_PASSWORD"); ok {
+		c.TestRedisPassword = v
+	}
+	if v := os.Getenv("TEST_REDIS_DB"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.TestRedisDB = n
+		}
+	}
 }
 
-func getDurationEnv(key string, fallback time.Duration) time.Duration {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
+func (c Config) Validate() error {
+	if c.HTTPAddr == "" {
+		return errors.New("http.addr cannot be empty")
 	}
-	if d, err := time.ParseDuration(v); err == nil {
-		return d
+	if c.DatabaseURL == "" {
+		return errors.New("postgres.dsn cannot be empty")
 	}
-	if secs, err := strconv.Atoi(v); err == nil {
-		return time.Duration(secs) * time.Second
+	if c.AppEnv == "prod" && (c.JWTSecret == "" || c.JWTSecret == "dev-insecure-secret-change-in-prod") {
+		return errors.New("jwt.secret (or JWT_SECRET) must be set to a strong key in prod")
 	}
-	return fallback
+	if c.ShutdownTimeout <= 0 {
+		return errors.New("http.shutdown_timeout must be positive")
+	}
+	return nil
 }

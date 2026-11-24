@@ -8,8 +8,7 @@
 *.out
 
 # Environment & local runtime data
-.env
-.env.local
+configs/*.local.yaml
 /uploads/
 
 # IDE & OS

@@ -29,8 +29,8 @@ go-starter/
 ├── AGENTS.md                 # AI 编程规范与架构约束
 ├── Makefile                  # 常用开发、迁移、测试与构建命令
 ├── Dockerfile                # 多阶段无 CGO 静态构建镜像
-├── docker-compose.yml        # 本地 Postgres 16 + Redis 7
-├── .env.example              # 环境变量配置模板
+├── configs/
+│   └── config.yaml           # 结构化默认配置（本地私有覆盖可建 config.local.yaml）
 ├── cmd/
 │   ├── server/main.go        # 服务入口（HTTP + Asynq 同进程优雅停机）
 │   └── migrate/main.go       # 内置 goose 迁移命令入口
@@ -54,6 +54,6 @@ go-starter/
 
 ## 生产部署注意事项
 
-1. 在 `.env` 中将 `APP_ENV=prod` 并设置强随机 `JWT_SECRET`。
+1. 生产环境通过 `configs/config.local.yaml` 或环境变量设置 `APP_ENV=prod` 与强随机 `JWT_SECRET`。
 2. 默认管理员 `admin` / `admin123` 仅在空库首次启动时生成，上线后请立即调用 `/api/v1/auth/change-password` 修改密码。
 3. 若前端通过 Nginx 代理分片上传接口，请将 `client_max_body_size` 调整为大于单片上限（默认 `10M`）。

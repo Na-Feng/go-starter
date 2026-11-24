@@ -25,6 +25,7 @@ export class ApiError extends Error {
 
 export const tokenStorage = {
   getAccess: () => Taro.getStorageSync<string>(ACCESS_KEY) || '',
+  getRefresh: () => Taro.getStorageSync<string>(REFRESH_KEY) || '',
   setTokens: (pair: TokenPair) => {
     Taro.setStorageSync(ACCESS_KEY, pair.access_token);
     Taro.setStorageSync(REFRESH_KEY, pair.refresh_token);
@@ -60,10 +61,61 @@ function buildUrl(
   return `${BASE_URL}${resolved}`;
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
+function tryRefreshTaroTokens(): Promise<boolean> {
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+  const refreshToken = tokenStorage.getRefresh();
+  if (!refreshToken) {
+    return Promise.resolve(false);
+  }
+
+  refreshInFlight = (async () => {
+    try {
+      const res = await Taro.request<Envelope<TokenPair>>({
+        url: buildUrl('/api/v1/auth/refresh'),
+        method: 'POST',
+        data: { refresh_token: refreshToken },
+        header: { 'Content-Type': 'application/json' },
+        timeout: 15000,
+      });
+      if (
+        res.statusCode >= 200 &&
+        res.statusCode < 300 &&
+        res.data?.code === 0 &&
+        res.data.data?.access_token
+      ) {
+        tokenStorage.setTokens(res.data.data);
+        return true;
+      }
+      tokenStorage.clear();
+      return false;
+    } catch {
+      tokenStorage.clear();
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+function isAuthLifecycleUrl(url: string): boolean {
+  return (
+    url.endsWith('/api/v1/auth/login') ||
+    url.endsWith('/api/v1/auth/refresh') ||
+    url.endsWith('/api/v1/auth/logout')
+  );
+}
+
 async function sendTaroEnvelope<T>(
   url: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   data?: object,
+  allowRefresh = true,
 ): Promise<T> {
   const token = tokenStorage.getAccess();
   const header: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -80,6 +132,12 @@ async function sendTaroEnvelope<T>(
   });
 
   if (res.statusCode === 401) {
+    if (allowRefresh && !isAuthLifecycleUrl(url)) {
+      const refreshed = await tryRefreshTaroTokens();
+      if (refreshed) {
+        return sendTaroEnvelope<T>(url, method, data, false);
+      }
+    }
     tokenStorage.clear();
     void Taro.navigateTo({ url: '/pages/login/index' });
     throw new ApiError(40101, '请先登录', 401);

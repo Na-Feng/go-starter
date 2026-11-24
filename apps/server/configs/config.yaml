@@ -1,0 +1,47 @@
+app:
+  env: dev
+  log_level: info
+  log_format: text
+
+http:
+  addr: ":8080"
+  cors_allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+  request_timeout: 15s
+  read_timeout: 15s
+  write_timeout: 15s
+  shutdown_timeout: 10s
+  rate_limit_per_min: 120
+
+postgres:
+  dsn: "postgres://postgres:postgres@localhost:5432/starter?sslmode=disable"
+  max_conns: 20
+  min_conns: 2
+  auto_migrate: true
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+jwt:
+  secret: "dev-insecure-secret-change-in-prod"
+  access_ttl: 2h
+  refresh_ttl: 168h
+
+storage:
+  upload_dir: "./uploads"
+  max_upload_mb: 10
+  max_large_upload_mb: 500
+  image_max_width: 1920
+  image_jpeg_quality: 80
+
+worker:
+  concurrency: 5
+
+test:
+  postgres_dsn: "postgres://postgres:postgres@localhost:5432/starter_test?sslmode=disable"
+  redis_addr: "localhost:6379"
+  redis_password: ""
+  redis_db: 15
